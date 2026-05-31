@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import sourceDictData from './data/sourceDictionary.json'; // 150 curated words → drives tile bag
 import dictionaryData from './data/cantoneseDictionary.json'; // full rich dict → popup info
@@ -78,9 +78,9 @@ function createTileBag(dictionary) {
 }
 
 const BOARD_SIZE = 11;
+const RACK_SIZE = 14; // tiles per player hand
 
 function App() {
-    // dictionaryData is only used at module level for WORD_INFO_MAP; no need to keep in state
     const [tileBag, setTileBag] = useState([]);
     const [board, setBoard] = useState(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)));
     
@@ -88,6 +88,12 @@ function App() {
     const [currentPlayer, setCurrentPlayer] = useState(1);
     const [scores, setScores] = useState({ 1: 0, 2: 0 });
     const [racks, setRacks] = useState({ 1: [], 2: [] });
+
+    // Refs that always hold the latest scores/racks — avoids stale-closure bugs in endGame
+    const scoresRef = useRef({ 1: 0, 2: 0 });
+    const racksRef  = useRef({ 1: [], 2: [] });
+    useEffect(() => { scoresRef.current = scores; }, [scores]);
+    useEffect(() => { racksRef.current  = racks;  }, [racks]);
     
     // UI/Interaction States
     const [selectedTileId, setSelectedTileId] = useState(null);
@@ -96,23 +102,25 @@ function App() {
     const [showInterstitial, setShowInterstitial] = useState(false);
     const [soundEnabled, setSoundEnabled] = useState(true);
     const [activeDragId, setActiveDragId] = useState(null);
+
+    // Exchange mode
+    const [isExchangeMode, setIsExchangeMode] = useState(false);
+    const [exchangeSelected, setExchangeSelected] = useState(new Set());
     
     // Feedback Modals / Alerts
     const [alertMessage, setAlertMessage] = useState(null);
     const [wordModal, setWordModal] = useState({ isOpen: false, word: '', jyutping: '', eng: '', score: 0, isBingo: false });
     const [history, setHistory] = useState([]);
     const [gameWinner, setGameWinner] = useState(null);
-    const [endScores, setEndScores] = useState(null); // holds final scores after deductions
+    const [endScores, setEndScores] = useState(null);
     const [consecutivePasses, setConsecutivePasses] = useState(0);
 
     // Initial setup on mount — tile bag uses 150 curated source words for playable characters
     useEffect(() => {
         const bag = createTileBag(sourceDictData);
-        
-        // Deal 7 tiles to each player
-        const rack1 = bag.splice(0, 7);
-        const rack2 = bag.splice(0, 7);
-
+        // Deal RACK_SIZE tiles to each player
+        const rack1 = bag.splice(0, RACK_SIZE);
+        const rack2 = bag.splice(0, RACK_SIZE);
         setTileBag(bag);
         setRacks({ 1: rack1, 2: rack2 });
     }, []);
@@ -254,6 +262,11 @@ function App() {
     // CLICK-TO-PLACE INTERACTION (Alternative / Mobile Fallback)
     const handleTileClick = (tile, isRackTile) => {
         if (soundEnabled) sound.playTick();
+        // In exchange mode, rack tile clicks toggle selection
+        if (isExchangeMode && isRackTile) {
+            handleToggleExchangeTile(tile.id);
+            return;
+        }
         if (isRackTile) {
             setSelectedTileId(tile.id === selectedTileId ? null : tile.id);
         } else {
@@ -575,8 +588,11 @@ function App() {
             [currentPlayer]: prev[currentPlayer] + turnScore
         }));
 
-        // Refill player rack
-        const rackRefillCount = 7 - racks[currentPlayer].length;
+        // Refill player rack up to RACK_SIZE
+        const rackAfterPlay = racks[currentPlayer].filter(
+            t => !placementsThisTurn.find(p => p.id === t.id)
+        );
+        const rackRefillCount = Math.max(0, RACK_SIZE - rackAfterPlay.length);
         const newBag = [...tileBag];
         const newRackTiles = newBag.splice(0, rackRefillCount);
 
@@ -622,13 +638,15 @@ function App() {
 
     // GAME END TRIGGERS
     const endGame = () => {
-        // Compute final scores synchronously and store in dedicated endScores state
-        // (avoids stale-closure bug where scores still reads 0 before setScores flushes)
-        const rack1Val = racks[1].reduce((sum, t) => sum + t.points, 0);
-        const rack2Val = racks[2].reduce((sum, t) => sum + t.points, 0);
+        // Use refs to read the TRUE latest scores/racks, bypassing stale closure
+        const latestScores = scoresRef.current;
+        const latestRacks  = racksRef.current;
 
-        const final1 = Math.max(0, scores[1] - rack1Val);
-        const final2 = Math.max(0, scores[2] - rack2Val);
+        const rack1Val = latestRacks[1].reduce((sum, t) => sum + t.points, 0);
+        const rack2Val = latestRacks[2].reduce((sum, t) => sum + t.points, 0);
+
+        const final1 = Math.max(0, latestScores[1] - rack1Val);
+        const final2 = Math.max(0, latestScores[2] - rack2Val);
         const finalScores = { 1: final1, 2: final2 };
 
         setEndScores(finalScores);
@@ -644,9 +662,9 @@ function App() {
 
     const handleRestart = () => {
         if (soundEnabled) sound.playTick();
-        const bag = createTileBag(sourceDictData); // use curated source words
-        const rack1 = bag.splice(0, 7);
-        const rack2 = bag.splice(0, 7);
+        const bag = createTileBag(sourceDictData);
+        const rack1 = bag.splice(0, RACK_SIZE);
+        const rack2 = bag.splice(0, RACK_SIZE);
 
         setTileBag(bag);
         setRacks({ 1: rack1, 2: rack2 });
@@ -662,6 +680,69 @@ function App() {
         setSelectedTileId(null);
         setIsRackHidden(false);
         setShowInterstitial(false);
+        setIsExchangeMode(false);
+        setExchangeSelected(new Set());
+    };
+
+    // EXCHANGE TILES
+    const handleStartExchange = () => {
+        if (placementsThisTurn.length > 0) {
+            triggerAlert('Recall your tiles before exchanging! 請先收回字牌');
+            return;
+        }
+        setIsExchangeMode(true);
+        setExchangeSelected(new Set());
+    };
+
+    const handleToggleExchangeTile = (tileId) => {
+        setExchangeSelected(prev => {
+            const next = new Set(prev);
+            next.has(tileId) ? next.delete(tileId) : next.add(tileId);
+            return next;
+        });
+    };
+
+    const handleConfirmExchange = () => {
+        if (exchangeSelected.size === 0) {
+            triggerAlert('Select at least one tile to exchange! 請選擇字牌');
+            return;
+        }
+        if (exchangeSelected.size > tileBag.length) {
+            triggerAlert('Not enough tiles in the bag! 字袋字牌不足');
+            return;
+        }
+        const newBag = [...tileBag];
+        // Draw replacement tiles first
+        const drawn = newBag.splice(0, exchangeSelected.size);
+        // Return discarded tiles to bag (shuffled in)
+        const discarded = racks[currentPlayer].filter(t => exchangeSelected.has(t.id));
+        newBag.push(...discarded);
+        // Shuffle bag
+        for (let i = newBag.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [newBag[i], newBag[j]] = [newBag[j], newBag[i]];
+        }
+        const newRack = [
+            ...racks[currentPlayer].filter(t => !exchangeSelected.has(t.id)),
+            ...drawn
+        ];
+        setTileBag(newBag);
+        setRacks(prev => ({ ...prev, [currentPlayer]: newRack }));
+        setIsExchangeMode(false);
+        setExchangeSelected(new Set());
+        // Exchange counts as a pass for consecutive-pass tracking
+        const nextPassCount = consecutivePasses + 1;
+        setConsecutivePasses(nextPassCount);
+        if (nextPassCount >= 2) {
+            endGame();
+        } else {
+            transitionTurn();
+        }
+    };
+
+    const handleCancelExchange = () => {
+        setIsExchangeMode(false);
+        setExchangeSelected(new Set());
     };
 
     // Custom Vocabulary Loading helper
@@ -689,6 +770,7 @@ function App() {
 
     // Renders draggable/click-place tile
     const renderTile = (tile, isRackTile, isSelected) => {
+        const isExchangeSelected = isExchangeMode && exchangeSelected.has(tile.id);
         return (
             <Tile
                 key={tile.id}
@@ -698,6 +780,7 @@ function App() {
                 points={tile.points}
                 isRackTile={isRackTile}
                 isSelected={isSelected}
+                isExchangeSelected={isExchangeSelected}
                 onClick={() => handleTileClick(tile, isRackTile)}
             />
         );
@@ -761,17 +844,34 @@ function App() {
                         />
 
                         {/* Actions Panel */}
-                        <div className="action-buttons-wrapper">
-                            <button className="btn-game btn-recall" onClick={handleRecall}>
-                                🔄 Recall All Tiles • 重收
-                            </button>
-                            <button className="btn-game btn-pass" onClick={handlePass}>
-                                ⏭️ Pass • 跳過
-                            </button>
-                            <button className="btn-game btn-submit-game" onClick={handleSubmit}>
-                                ⚡ Submit Word • 提交詞語
-                            </button>
-                        </div>
+                        {isExchangeMode ? (
+                            <div className="action-buttons-wrapper exchange-mode-bar">
+                                <p className="exchange-hint">Tap tiles on your rack to select them for exchange • 點選字牌換牌</p>
+                                <div className="exchange-actions">
+                                    <button className="btn-game btn-pass" onClick={handleCancelExchange}>
+                                        ✕ Cancel • 取消
+                                    </button>
+                                    <button className="btn-game btn-submit-game" onClick={handleConfirmExchange}>
+                                        🔁 Confirm Exchange ({exchangeSelected.size}) • 確認換牌
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="action-buttons-wrapper">
+                                <button className="btn-game btn-recall" onClick={handleRecall}>
+                                    🔄 Recall • 重收
+                                </button>
+                                <button className="btn-game btn-exchange" onClick={handleStartExchange}>
+                                    🔁 Exchange • 換牌
+                                </button>
+                                <button className="btn-game btn-pass" onClick={handlePass}>
+                                    ⏭️ Pass • 跳過
+                                </button>
+                                <button className="btn-game btn-submit-game" onClick={handleSubmit}>
+                                    ⚡ Submit • 提交
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* RIGHT PANEL: SCOREBOARD & DICTIONARY LOOKUP */}
