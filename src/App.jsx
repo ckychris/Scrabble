@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
-import dictionaryData from './data/cantoneseDictionary.json';
-import wordSetData from './data/wordSet.json';
+import sourceDictData from './data/sourceDictionary.json'; // 150 curated words → drives tile bag
+import dictionaryData from './data/cantoneseDictionary.json'; // full rich dict → popup info
+import wordSetData from './data/wordSet.json'; // full 53k set → word validation
 import { Board, getBoardMultiplier } from './components/Board';
 import { Rack } from './components/Rack';
 import { Tile } from './components/Tile';
@@ -10,7 +11,7 @@ import sound from './components/SoundSynth';
 // Build O(1) lookup Set from full 53k-word list
 const WORD_SET = new Set(wordSetData);
 
-// Build a Map from variant → {j, e} for quick popup info
+// Build a Map from variant → {jyutping, e} for quick popup info
 const WORD_INFO_MAP = new Map(dictionaryData.map(e => [e.v, { jyutping: e.j, eng: e.e }]));
 
 // Dynamic Tile Bag Generator
@@ -103,9 +104,9 @@ function App() {
     const [gameWinner, setGameWinner] = useState(null);
     const [consecutivePasses, setConsecutivePasses] = useState(0);
 
-    // Initial setup on mount
+    // Initial setup on mount — tile bag uses 150 curated source words for playable characters
     useEffect(() => {
-        const bag = createTileBag(dictionaryData);
+        const bag = createTileBag(sourceDictData);
         
         // Deal 7 tiles to each player
         const rack1 = bag.splice(0, 7);
