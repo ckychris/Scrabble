@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay } from '@dnd-kit/core';
 import dictionaryData from './data/cantoneseDictionary.json';
+import wordSetData from './data/wordSet.json';
 import { Board, getBoardMultiplier } from './components/Board';
 import { Rack } from './components/Rack';
 import { Tile } from './components/Tile';
 import sound from './components/SoundSynth';
+
+// Build O(1) lookup Set from full 53k-word list
+const WORD_SET = new Set(wordSetData);
+
+// Build a Map from variant → {j, e} for quick popup info
+const WORD_INFO_MAP = new Map(dictionaryData.map(e => [e.v, { jyutping: e.j, eng: e.e }]));
 
 // Dynamic Tile Bag Generator
 function createTileBag(dictionary) {
@@ -12,10 +19,12 @@ function createTileBag(dictionary) {
     const charJyutping = {};
 
     // Calculate frequencies and store Jyutping mapping
+    // Uses compact format: entry.v = variant, entry.j = jyutping
     dictionary.forEach(entry => {
-        const word = entry.variant;
+        const word = entry.v;
+        if (!word) return;
         // Break down pronunciation by character
-        const jyutpingList = entry.jyutping.split(/\s+/);
+        const jyutpingList = (entry.j || '').split(/\s+/);
         
         for (let i = 0; i < word.length; i++) {
             const char = word[i];
@@ -70,7 +79,7 @@ function createTileBag(dictionary) {
 const BOARD_SIZE = 11;
 
 function App() {
-    const [dictionary, setDictionary] = useState(dictionaryData);
+    // dictionaryData is only used at module level for WORD_INFO_MAP; no need to keep in state
     const [tileBag, setTileBag] = useState([]);
     const [board, setBoard] = useState(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)));
     
@@ -96,7 +105,7 @@ function App() {
 
     // Initial setup on mount
     useEffect(() => {
-        const bag = createTileBag(dictionary);
+        const bag = createTileBag(dictionaryData);
         
         // Deal 7 tiles to each player
         const rack1 = bag.splice(0, 7);
@@ -104,7 +113,7 @@ function App() {
 
         setTileBag(bag);
         setRacks({ 1: rack1, 2: rack2 });
-    }, [dictionary]);
+    }, []);
 
     // Triggers self-clearing alerts
     const triggerAlert = (msg) => {
@@ -499,18 +508,18 @@ function App() {
             return;
         }
 
-        // 5. DICTIONARY COMPARISON MATCH
+        // 5. DICTIONARY COMPARISON MATCH (O(1) Set lookup against 53k words)
         const validatedWords = [];
         for (const formed of formedWords) {
-            const match = dictionary.find(d => d.variant === formed.word);
-            if (!match) {
+            if (!WORD_SET.has(formed.word)) {
                 triggerAlert(`"${formed.word}" is not a valid Cantonese word! "${formed.word}" 不是合法的粵語詞彙`);
                 return;
             }
+            const info = WORD_INFO_MAP.get(formed.word) || { jyutping: '', eng: '' };
             validatedWords.push({
                 ...formed,
-                jyutping: match.jyutping,
-                eng: match.eng
+                jyutping: info.jyutping,
+                eng: info.eng
             });
         }
 
