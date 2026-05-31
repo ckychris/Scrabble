@@ -102,6 +102,7 @@ function App() {
     const [wordModal, setWordModal] = useState({ isOpen: false, word: '', jyutping: '', eng: '', score: 0, isBingo: false });
     const [history, setHistory] = useState([]);
     const [gameWinner, setGameWinner] = useState(null);
+    const [endScores, setEndScores] = useState(null); // holds final scores after deductions
     const [consecutivePasses, setConsecutivePasses] = useState(0);
 
     // Initial setup on mount — tile bag uses 150 curated source words for playable characters
@@ -621,20 +622,20 @@ function App() {
 
     // GAME END TRIGGERS
     const endGame = () => {
-        let finalScores = { ...scores };
-        
-        // Subtract remaining tiles in racks from scores
+        // Compute final scores synchronously and store in dedicated endScores state
+        // (avoids stale-closure bug where scores still reads 0 before setScores flushes)
         const rack1Val = racks[1].reduce((sum, t) => sum + t.points, 0);
         const rack2Val = racks[2].reduce((sum, t) => sum + t.points, 0);
-        
-        finalScores[1] = Math.max(0, finalScores[1] - rack1Val);
-        finalScores[2] = Math.max(0, finalScores[2] - rack2Val);
 
-        setScores(finalScores);
+        const final1 = Math.max(0, scores[1] - rack1Val);
+        const final2 = Math.max(0, scores[2] - rack2Val);
+        const finalScores = { 1: final1, 2: final2 };
 
-        let winner = 0;
-        if (finalScores[1] > finalScores[2]) winner = 1;
-        else if (finalScores[2] > finalScores[1]) winner = 2;
+        setEndScores(finalScores);
+
+        let winner;
+        if (final1 > final2) winner = 1;
+        else if (final2 > final1) winner = 2;
         else winner = 'TIE';
 
         setGameWinner(winner);
@@ -643,7 +644,7 @@ function App() {
 
     const handleRestart = () => {
         if (soundEnabled) sound.playTick();
-        const bag = createTileBag(dictionary);
+        const bag = createTileBag(sourceDictData); // use curated source words
         const rack1 = bag.splice(0, 7);
         const rack2 = bag.splice(0, 7);
 
@@ -651,6 +652,7 @@ function App() {
         setRacks({ 1: rack1, 2: rack2 });
         setBoard(Array(BOARD_SIZE).fill(null).map(() => Array(BOARD_SIZE).fill(null)));
         setScores({ 1: 0, 2: 0 });
+        setEndScores(null);
         setCurrentPlayer(1);
         setPlacementsThisTurn([]);
         setConsecutivePasses(0);
@@ -658,6 +660,8 @@ function App() {
         setGameWinner(null);
         setWordModal({ isOpen: false, word: '', jyutping: '', eng: '', score: 0, isBingo: false });
         setSelectedTileId(null);
+        setIsRackHidden(false);
+        setShowInterstitial(false);
     };
 
     // Custom Vocabulary Loading helper
@@ -898,11 +902,11 @@ function App() {
                             <div className="final-scoreboard-summary">
                                 <div className="final-row">
                                     <span>Player 1 Score:</span>
-                                    <strong>{scores[1]}</strong>
+                                    <strong>{endScores ? endScores[1] : scores[1]}</strong>
                                 </div>
                                 <div className="final-row">
                                     <span>Player 2 Score:</span>
-                                    <strong>{scores[2]}</strong>
+                                    <strong>{endScores ? endScores[2] : scores[2]}</strong>
                                 </div>
                             </div>
 
