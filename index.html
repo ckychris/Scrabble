@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scramble | Ultimate Word Puzzle</title>
+    <meta name="description" content="An elegant, modern word scramble game featuring vibrant glassmorphism, responsive controls, and high-fidelity sound synthesis.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at 50% 50%, #1a1528 0%, #0d0a15 100%);
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.4);
+            --secondary: #ec4899;
+            --secondary-glow: rgba(236, 72, 153, 0.4);
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: rgba(0, 0, 0, 0.4);
+            --font: 'Outfit', sans-serif;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Abstract glowing background blobs */
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            z-index: 0;
+            opacity: 0.15;
+            pointer-events: none;
+            animation: pulse 10s infinite alternate;
+        }
+
+        .blob-1 {
+            width: 400px;
+            height: 400px;
+            background: var(--primary);
+            top: -100px;
+            left: -100px;
+        }
+
+        .blob-2 {
+            width: 450px;
+            height: 450px;
+            background: var(--secondary);
+            bottom: -150px;
+            right: -150px;
+            animation-delay: -5s;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1) translate(0, 0); opacity: 0.15; }
+            100% { transform: scale(1.2) translate(50px, 30px); opacity: 0.25; }
+        }
+
+        /* Core Container */
+        .container {
+            width: 90%;
+            max-width: 600px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 20px 50px var(--glass-shadow);
+            z-index: 10;
+            text-align: center;
+            position: relative;
+            transform: translateY(0);
+            transition: var(--transition);
+        }
+
+        header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #fff 30%, var(--primary) 70%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            position: relative;
+        }
+
+        header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin-bottom: 30px;
+            font-weight: 300;
+        }
+
+        /* Game Screens */
+        .screen {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Category Selection Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .btn-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            padding: 24px 16px;
+            border-radius: 16px;
+            color: var(--text-main);
+            font-family: var(--font);
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            opacity: 0;
+            transition: var(--transition);
+            z-index: -1;
+        }
+
+        .btn-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 20px rgba(139, 92, 246, 0.15);
+        }
+
+        .btn-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .btn-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+        }
+
+        .btn-card.selected::before {
+            opacity: 0.2;
+        }
+
+        .btn-card .emoji {
+            font-size: 2rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            border: none;
+            padding: 16px 36px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: var(--font);
+            box-shadow: 0 10px 25px var(--primary-glow);
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px var(--secondary-glow);
+            filter: brightness(1.1);
+        }
+
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+
+        /* Stats Bar */
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 12px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            border-radius: 14px;
+            font-size: 0.95rem;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-weight: 400;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Scrambled Word Display */
+        .word-container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 30px 0;
+            min-height: 70px;
+            align-items: center;
+        }
+
+        .letter-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            font-size: 2.2rem;
+            font-weight: 800;
+            width: 56px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+            animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+            text-transform: uppercase;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(5deg); }
+            70% { transform: scale(0.9) rotate(-2deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        /* Interactive Guess Box */
+        .guess-box {
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .input-guess {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px solid var(--glass-border);
+            border-radius: 14px;
+            padding: 16px 20px;
+            font-size: 1.5rem;
+            color: white;
+            font-family: var(--font);
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 2px;
+            outline: none;
+            transition: var(--transition);
+            text-transform: uppercase;
+        }
+
+        .input-guess:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        /* Controls Block */
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .btn-sub {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            font-weight: 600;
+            font-family: var(--font);
+            cursor: pointer;
+            transition: var(--transition);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .btn-sub:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-submit {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-submit:hover {
+            background: #7c3aed;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .hint-text {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+            min-height: 24px;
+            font-style: italic;
+        }
+
+        /* Progress Circle for Timer */
+        .timer-container {
+            position: relative;
+            width: 44px;
+            height: 44px;
+        }
+
+        .timer-svg {
+            transform: rotate(-90deg);
+            width: 44px;
+            height: 44px;
+        }
+
+        .timer-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-width: 4;
+        }
+
+        .timer-progress {
+            fill: none;
+            stroke: var(--secondary);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 125.6;
+            stroke-dashoffset: 0;
+            transition: stroke-dashoffset 1s linear, stroke var(--transition);
+        }
+
+        .timer-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: 800;
+            font-size: 0.85rem;
+        }
+
+        /* Results & Modal */
+        .result-title {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 12px;
+        }
+
+        .result-detail {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            font-weight: 300;
+        }
+
+        .summary-stats {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: 16px;
+            margin-bottom: 30px;
+        }
+
+        .summary-num {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* Confetti/Particle Canvas */
+        canvas#particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            border-radius: 24px;
+        }
+
+        /* Shaking Animation for Errors */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+
+        .shake {
+            animation: shake 0.4s ease-in-out;
+        }
+
+        /* Success Pulse Animation */
+        @keyframes pulseSuccess {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+            70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        .success-pulse {
+            animation: pulseSuccess 0.6s ease-out;
+            border-color: var(--accent) !important;
+        }
+
+        footer {
+            margin-top: 30px;
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+
+        footer a {
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            transition: var(--transition);
+        }
+
+        footer a:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+
+    <div class="container" id="gameWindow">
+        <canvas id="particles"></canvas>
+        
+        <!-- HEADER -->
+        <header>
+            <h1>Scramble</h1>
+            <p>Unravel the Letters • Master the Words</p>
+        </header>
+
+        <!-- SCREEN 1: START SCREEN -->
+        <div class="screen active" id="screenStart">
+            <header style="margin-bottom: 24px;">
+                <h3 style="font-size: 1.3rem; font-weight: 600; color: var(--text-main); margin-bottom: 8px;">Select a Category</h3>
+                <p style="font-size: 0.9rem; color: var(--text-muted);">Choose a theme to test your puzzle solving speeds.</p>
+            </header>
+            <div class="grid">
+                <button class="btn-card selected" data-category="tech">
+                    <span class="emoji">💻</span>
+                    <span>Technology</span>
+                </button>
+                <button class="btn-card" data-category="space">
+                    <span class="emoji">🚀</span>
+                    <span>Cosmos</span>
+                </button>
+                <button class="btn-card" data-category="nature">
+                    <span class="emoji">🌲</span>
+                    <span>Nature</span>
+                </button>
+                <button class="btn-card" data-category="food">
+                    <span class="emoji">🍕</span>
+                    <span>Gastronomy</span>
+                </button>
+            </div>
+            <button class="btn-primary" id="btnPlay">Start Game</button>
+        </div>
+
+        <!-- SCREEN 2: PLAY SCREEN -->
+        <div class="screen" id="screenPlay">
+            <!-- Stats -->
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="timer-container">
+                        <svg class="timer-svg">
+                            <circle class="timer-bg" cx="22" cy="22" r="20"></circle>
+                            <circle class="timer-progress" id="timerRing" cx="22" cy="22" r="20"></circle>
+                        </svg>
+                        <div class="timer-text" id="timerLabel">30</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div style="text-align: right;">
+                        <span class="stat-label">Score</span>
+                        <div id="statScore" style="font-size: 1.3rem; font-weight: 800; color: var(--primary);">0</div>
+                    </div>
+                </div>
+                <div class="stat-item">
+                    <div style="text-align: right;">
+                        <span class="stat-label">Streak</span>
+                        <div id="statStreak" style="font-size: 1.3rem; font-weight: 800; color: var(--accent);">🔥 x1</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrambled Word -->
+            <div class="word-container" id="scrambledWordContainer">
+                <!-- Programmatically populated letter cards -->
+            </div>
+
+            <!-- User Guess Box -->
+            <div class="guess-box">
+                <input type="text" class="input-guess" id="inputGuess" autocomplete="off" spellcheck="false" placeholder="Type your guess here..." placeholder-color="rgba(255,255,255,0.1)">
+                <p class="hint-text" id="hintText">Need a hint? Click the hint button below.</p>
+            </div>
+
+            <!-- Controls -->
+            <div class="control-buttons">
+                <button class="btn-sub" id="btnSkip">Skip (-10s)</button>
+                <button class="btn-sub" id="btnHint">Hint</button>
+                <button class="btn-sub btn-submit" id="btnSubmit">Submit</button>
+            </div>
+        </div>
+
+        <!-- SCREEN 3: RESULTS SCREEN -->
+        <div class="screen" id="screenResults">
+            <h2 class="result-title" id="resultTitle">Time's Up!</h2>
+            <p class="result-detail" id="resultDetail">You did a phenomenal job unscrambling words.</p>
+
+            <div class="summary-stats">
+                <div>
+                    <span class="stat-label">Final Score</span>
+                    <div class="summary-num" id="summaryScore">120</div>
+                </div>
+                <div>
+                    <span class="stat-label">High Score</span>
+                    <div class="summary-num" style="color: var(--secondary);" id="summaryBest">340</div>
+                </div>
+                <div>
+                    <span class="stat-label">Words Solved</span>
+                    <div class="summary-num" style="color: var(--accent);" id="summarySolved">8</div>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btnRestart">Play Again</button>
+        </div>
+    </div>
+
+    <footer>
+        Developed in pair programming with Antigravity • <a href="https://github.com/ckychris/Scramble" target="_blank">Repository</a>
+    </footer>
+
+    <!-- Web Audio Synthesis & Game Logic -->
+    <script>
+        // WORD BANK DATA
+        const WORDS_DATABASE = {
+            tech: [
+                { word: "JAVASCRIPT", hint: "The language of the web browser" },
+                { word: "ALGORITHM", hint: "A step-by-step procedure for calculations" },
+                { word: "COMPILER", hint: "Translates code from high-level to machine language" },
+                { word: "DATABASE", hint: "An organized collection of structured data" },
+                { word: "FRONTEND", hint: "The user-facing part of a website or application" },
+                { word: "SECURITY", hint: "Protection of computer systems and networks" },
+                { word: "VARIABLE", hint: "A storage location paired with an associated name" },
+                { word: "INTERFACE", hint: "A shared boundary across which information is exchanged" },
+                { word: "FRAMEWORK", hint: "A reusable platform providing generic functionality" },
+                { word: "FUNCTION", hint: "A block of organized, reusable code" }
+            ],
+            space: [
+                { word: "ASTRONOMY", hint: "The branch of science that studies celestial objects" },
+                { word: "NEBULA", hint: "An interstellar cloud of dust, hydrogen, and helium" },
+                { word: "GALAXY", hint: "A gravitationally bound system of stars and dark matter" },
+                { word: "TELESCOPE", hint: "An optical instrument designed to make distant objects appear nearer" },
+                { word: "SUPERNOVA", hint: "A powerful and luminous stellar explosion" },
+                { word: "GRAVITY", hint: "The force that attracts a body toward the center of the earth" },
+                { word: "SATELLITE", hint: "An artificial body placed in orbit round the earth or moon" },
+                { word: "ASTEROID", hint: "A small rocky body orbiting the sun" },
+                { word: "UNIVERSE", hint: "All of space and time and their contents" },
+                { word: "ASTRONAUT", hint: "A person who is trained to travel in a spacecraft" }
+            ],
+            nature: [
+                { word: "RAINFOREST", hint: "Luxuriant, dense forest rich in biodiversity, found in tropical areas" },
+                { word: "ECOSYSTEM", hint: "A biological community of interacting organisms and their environment" },
+                { word: "WILDERNESS", hint: "An uncultivated, uninhabited, and inhospitable region" },
+                { word: "GLACIER", hint: "A slowly moving mass or river of ice formed by accumulation of snow" },
+                { word: "VOLCANO", hint: "A mountain or hill having a crater through which lava is erupted" },
+                { word: "BIOSPHERE", hint: "The regions of the surface, atmosphere, and hydrosphere of the earth occupied by living organisms" },
+                { word: "MOUNTAIN", hint: "A large natural elevation of the earth's surface rising abruptly" },
+                { word: "OCEANOGRAPHY", hint: "The branch of science that deals with the physical and biological properties of the sea" },
+                { word: "ATMOSPHERE", hint: "The envelope of gases surrounding the earth or another planet" },
+                { word: "PHOTOSYNTHESIS", hint: "The process by which green plants make food using sunlight" }
+            ],
+            food: [
+                { word: "CHOCOLATE", hint: "A food preparation in the form of a paste or block, made from roasted cocoa seeds" },
+                { word: "SPAGHETTI", hint: "Pasta made in long, slender, solid strings" },
+                { word: "CROISSANT", hint: "A flaky, buttery, crescent-shaped French pastry" },
+                { word: "CAPPUCCINO", hint: "An espresso-based coffee drink prepared with steamed milk foam" },
+                { word: "GASTRONOMY", hint: "The practice or art of choosing, cooking, and eating good food" },
+                { word: "APPETIZER", hint: "A small dish of food or a drink taken before a meal to stimulate appetite" },
+                { word: "RESTAURANT", hint: "A place where people pay to sit and eat meals that are cooked on the premises" },
+                { word: "INGREDIENTS", hint: "Any of the foods or substances that are combined to make a particular dish" },
+                { word: "VEGETARIAN", hint: "A person who does not eat meat or fish" },
+                { word: "DELICIOUS", hint: "Highly pleasant to the taste" }
+            ]
+        };
+
+        // SOUND SYNTHESIS USING WEB AUDIO API
+        class SoundSynth {
+            constructor() {
+                this.ctx = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            playTick() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.05);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+
+            playCorrect() {
+                this.init();
+                const now = this.ctx.currentTime;
+                
+                // Double chime (perfect fourth interval)
+                this.playTone(523.25, 0.12, 0.1); // C5
+                setTimeout(() => {
+                    this.playTone(698.46, 0.25, 0.1); // F5
+                }, 100);
+            }
+
+            playIncorrect() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = "sawtooth";
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(80, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + 0.25);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            playTimeUp() {
+                this.init();
+                // Triad alarm tones
+                this.playTone(440, 0.2, 0.1);
+                setTimeout(() => this.playTone(392, 0.2, 0.1), 150);
+                setTimeout(() => this.playTone(349, 0.4, 0.1), 300);
+            }
+
+            playTone(freq, duration, volume) {
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(volume, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, this.ctx.currentTime + duration);
+
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            }
+        }
+
+        const sound = new SoundSynth();
+
+        // CONFETTI PARTICLE SYSTEM
+        const canvas = document.getElementById("particles");
+        const ctx = canvas.getContext("2d");
+        let particles = [];
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.offsetWidth;
+            canvas.height = canvas.parentElement.offsetHeight;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.size = Math.random() * 6 + 4;
+                this.speedX = Math.random() * 6 - 3;
+                this.speedY = Math.random() * -6 - 2;
+                this.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                this.alpha = 1;
+                this.decay = Math.random() * 0.015 + 0.015;
+                this.gravity = 0.15;
+            }
+
+            update() {
+                this.speedY += this.gravity;
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function createConfettiBurst() {
+            particles = [];
+            const x = canvas.width / 2;
+            const y = canvas.height * 0.7;
+            for (let i = 0; i < 60; i++) {
+                particles.push(new Particle(x, y));
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach((p, index) => {
+                p.update();
+                p.draw();
+                if (p.alpha <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+            if (particles.length > 0) {
+                requestAnimationFrame(animateParticles);
+            }
+        }
+
+        function triggerConfetti() {
+            createConfettiBurst();
+            animateParticles();
+        }
+
+        // GAME STATE MANAGEMENT
+        const state = {
+            category: "tech",
+            score: 0,
+            streak: 1,
+            wordsSolvedCount: 0,
+            activeWord: "",
+            activeHint: "",
+            timer: 30,
+            timerInterval: null,
+            highScore: parseInt(localStorage.getItem("scramble_high_score") || "0")
+        };
+
+        // DOM ELEMENTS
+        const screenStart = document.getElementById("screenStart");
+        const screenPlay = document.getElementById("screenPlay");
+        const screenResults = document.getElementById("screenResults");
+        const btnPlay = document.getElementById("btnPlay");
+        const btnSkip = document.getElementById("btnSkip");
+        const btnHint = document.getElementById("btnHint");
+        const btnSubmit = document.getElementById("btnSubmit");
+        const btnRestart = document.getElementById("btnRestart");
+        const inputGuess = document.getElementById("inputGuess");
+        const scrambledWordContainer = document.getElementById("scrambledWordContainer");
+        const statScore = document.getElementById("statScore");
+        const statStreak = document.getElementById("statStreak");
+        const timerLabel = document.getElementById("timerLabel");
+        const timerRing = document.getElementById("timerRing");
+        const hintText = document.getElementById("hintText");
+        
+        const summaryScore = document.getElementById("summaryScore");
+        const summaryBest = document.getElementById("summaryBest");
+        const summarySolved = document.getElementById("summarySolved");
+        const gameWindow = document.getElementById("gameWindow");
+
+        // Category Cards Selection
+        document.querySelectorAll(".btn-card").forEach(card => {
+            card.addEventListener("click", () => {
+                sound.playTick();
+                document.querySelectorAll(".btn-card").forEach(c => c.classList.remove("selected"));
+                card.classList.add("selected");
+                state.category = card.getAttribute("data-category");
+            });
+        });
+
+        // Start Game
+        btnPlay.addEventListener("click", () => {
+            sound.init();
+            sound.playTick();
+            startGame();
+        });
+
+        btnRestart.addEventListener("click", () => {
+            sound.playTick();
+            showScreen(screenStart);
+        });
+
+        btnSubmit.addEventListener("click", checkGuess);
+        inputGuess.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") checkGuess();
+        });
+
+        btnSkip.addEventListener("click", () => {
+            sound.playTick();
+            // Penalty of 10 seconds or move directly
+            adjustTime(-10);
+            nextWord();
+        });
+
+        btnHint.addEventListener("click", () => {
+            sound.playTick();
+            hintText.innerText = `Hint: ${state.activeHint}`;
+            state.score = Math.max(0, state.score - 5); // small hint penalty
+            statScore.innerText = state.score;
+        });
+
+        function showScreen(screen) {
+            [screenStart, screenPlay, screenResults].forEach(s => s.classList.remove("active"));
+            screen.classList.add("active");
+            resizeCanvas();
+        }
+
+        function startGame() {
+            state.score = 0;
+            state.streak = 1;
+            state.wordsSolvedCount = 0;
+            state.timer = 30;
+            statScore.innerText = "0";
+            statStreak.innerText = "🔥 x1";
+            inputGuess.value = "";
+            showScreen(screenPlay);
+            nextWord();
+            startTimer();
+        }
+
+        function scramble(word) {
+            let scrambled = word.split('');
+            // Fisher-Yates Scramble
+            for (let i = scrambled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                const temp = scrambled[i];
+                scrambled[i] = scrambled[j];
+                scrambled[j] = temp;
+            }
+            // Ensure we don't return the exact original word
+            if (scrambled.join('') === word && word.length > 1) {
+                return scramble(word);
+            }
+            return scrambled.join('');
+        }
+
+        function nextWord() {
+            const list = WORDS_DATABASE[state.category];
+            const randomIndex = Math.floor(Math.random() * list.length);
+            const item = list[randomIndex];
+
+            state.activeWord = item.word;
+            state.activeHint = item.hint;
+            hintText.innerText = "Need a hint? Click the hint button below.";
+            inputGuess.value = "";
+
+            const scrambled = scramble(state.activeWord);
+
+            // Populate Letter Cards
+            scrambledWordContainer.innerHTML = "";
+            scrambled.split('').forEach((letter, i) => {
+                const card = document.createElement("div");
+                card.className = "letter-card";
+                card.innerText = letter;
+                card.style.animationDelay = `${i * 0.05}s`;
+                scrambledWordContainer.appendChild(card);
+            });
+
+            inputGuess.focus();
+        }
+
+        function checkGuess() {
+            const userGuess = inputGuess.value.trim().toUpperCase();
+            
+            if (userGuess === state.activeWord) {
+                // Success!
+                sound.playCorrect();
+                triggerConfetti();
+                
+                // Add success visual pulse
+                inputGuess.classList.add("success-pulse");
+                setTimeout(() => inputGuess.classList.remove("success-pulse"), 600);
+
+                // Update score and streak
+                const points = 10 * state.streak;
+                state.score += points;
+                state.wordsSolvedCount++;
+                
+                // Update Streak
+                state.streak++;
+                statScore.innerText = state.score;
+                statStreak.innerText = `🔥 x${state.streak}`;
+
+                // Add time bonus
+                adjustTime(5);
+
+                // Move to next word
+                setTimeout(nextWord, 300);
+            } else {
+                // Incorrect
+                sound.playIncorrect();
+                state.streak = 1;
+                statStreak.innerText = "🔥 x1";
+                
+                // Add error shake visual effect
+                gameWindow.classList.add("shake");
+                inputGuess.classList.add("shake");
+                setTimeout(() => {
+                    gameWindow.classList.remove("shake");
+                    inputGuess.classList.remove("shake");
+                }, 400);
+            }
+        }
+
+        // TIMER FUNCTIONS
+        function startTimer() {
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            updateTimerUI();
+
+            state.timerInterval = setInterval(() => {
+                state.timer--;
+                updateTimerUI();
+
+                if (state.timer <= 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function adjustTime(amount) {
+            state.timer = Math.max(0, state.timer + amount);
+            updateTimerUI();
+            if (state.timer <= 0) endGame();
+        }
+
+        function updateTimerUI() {
+            timerLabel.innerText = state.timer;
+            // Radial ring offset calculation (circumference = 2 * PI * r = 2 * 3.14159 * 20 ≈ 125.6)
+            const circumference = 125.6;
+            const percentage = Math.max(0, state.timer) / 30;
+            const offset = circumference - (percentage * circumference);
+            timerRing.style.strokeDashoffset = offset;
+
+            // Turn ring orange/red when running low
+            if (state.timer <= 10) {
+                timerRing.style.stroke = "var(--secondary)";
+            } else {
+                timerRing.style.stroke = "var(--accent)";
+            }
+        }
+
+        function endGame() {
+            clearInterval(state.timerInterval);
+            sound.playTimeUp();
+
+            // Save High Score
+            if (state.score > state.highScore) {
+                state.highScore = state.score;
+                localStorage.setItem("scramble_high_score", state.highScore);
+            }
+
+            // Populate Results
+            summaryScore.innerText = state.score;
+            summaryBest.innerText = state.highScore;
+            summarySolved.innerText = state.wordsSolvedCount;
+
+            showScreen(screenResults);
+        }
+    </script>
+</body>
+</html>
