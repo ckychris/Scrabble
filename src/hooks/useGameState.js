@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import sourceDictData from '../data/sourceDictionary.json';
-import sound from '../components/SoundSynth';
-import { getBoardMultiplier } from '../components/Board';
+import { useEffect, useMemo, useRef, useState } from "react";
+import sourceDictData from "../data/sourceDictionary.json";
+import sound from "../components/SoundSynth";
+import { getBoardMultiplier } from "../components/Board";
 import {
   BOARD_SIZE,
   DEFAULT_WORD_INFO_MAP,
@@ -12,7 +12,7 @@ import {
   createEmptyBoard,
   createTileBag,
   validateTurnSubmission,
-} from '../utils/gameLogic';
+} from "../utils/gameLogic";
 
 export function useGameState() {
   const [tileBag, setTileBag] = useState([]);
@@ -24,6 +24,7 @@ export function useGameState() {
 
   const scoresRef = useRef({ 1: 0, 2: 0 });
   const racksRef = useRef({ 1: [], 2: [] });
+  const gameSessionRef = useRef(0);
 
   const [selectedTileId, setSelectedTileId] = useState(null);
   const [placementsThisTurn, setPlacementsThisTurn] = useState([]);
@@ -36,9 +37,9 @@ export function useGameState() {
   const [alertMessage, setAlertMessage] = useState(null);
   const [wordModal, setWordModal] = useState({
     isOpen: false,
-    word: '',
-    jyutping: '',
-    eng: '',
+    word: "",
+    jyutping: "",
+    eng: "",
     score: 0,
     isBingo: false,
   });
@@ -46,6 +47,21 @@ export function useGameState() {
   const [gameWinner, setGameWinner] = useState(null);
   const [endScores, setEndScores] = useState(null);
   const [consecutivePasses, setConsecutivePasses] = useState(0);
+  const [tileDefinition, setTileDefinition] = useState({
+    isOpen: false,
+    word: "",
+    jyutping: "",
+    eng: "",
+  });
+  const hoverTimerRef = useRef(null);
+
+  useEffect(() => {
+    window.__CANTONESE_SCRABBLE__ = {
+      scores,
+      endScores,
+      gameWinner,
+    };
+  }, [scores, endScores, gameWinner]);
 
   useEffect(() => {
     scoresRef.current = scores;
@@ -55,14 +71,28 @@ export function useGameState() {
     racksRef.current = racks;
   }, [racks]);
 
+  useEffect(
+    () => () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+    },
+    [],
+  );
+
   const validationWordSet = useMemo(
-    () => (customDictionary ? buildWordSet(customDictionary) : DEFAULT_WORD_SET),
-    [customDictionary]
+    () =>
+      customDictionary ? buildWordSet(customDictionary) : DEFAULT_WORD_SET,
+    [customDictionary],
   );
 
   const validationWordInfoMap = useMemo(
-    () => (customDictionary ? buildWordInfoMap(customDictionary) : DEFAULT_WORD_INFO_MAP),
-    [customDictionary]
+    () =>
+      customDictionary
+        ? buildWordInfoMap(customDictionary)
+        : DEFAULT_WORD_INFO_MAP,
+    [customDictionary],
   );
 
   const triggerAlert = (msg) => {
@@ -71,28 +101,94 @@ export function useGameState() {
     setTimeout(() => setAlertMessage(null), 3000);
   };
 
+  const clearTileHoverTimer = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  };
+
+  const hideTileDefinition = () => {
+    clearTileHoverTimer();
+    setTileDefinition((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+  };
+
+  const handleTileHoverStart = (tile) => {
+    clearTileHoverTimer();
+
+    const char = tile?.char || "";
+    if (char.length !== 1) {
+      hideTileDefinition();
+      return;
+    }
+
+    const info = validationWordInfoMap.get(char);
+    if (!info) {
+      hideTileDefinition();
+      return;
+    }
+
+    hoverTimerRef.current = setTimeout(() => {
+      setTileDefinition({
+        isOpen: true,
+        word: char,
+        jyutping: info.jyutping || tile?.jyutping || "",
+        eng: info.eng || "",
+      });
+    }, 700);
+  };
+
+  const handleTileHoverEnd = () => {
+    hideTileDefinition();
+  };
+
+  const handleWordHoverStart = (wordEntry) => {
+    clearTileHoverTimer();
+
+    const word = wordEntry?.word || "";
+    if (!word) {
+      hideTileDefinition();
+      return;
+    }
+
+    const info = validationWordInfoMap.get(word);
+    hoverTimerRef.current = setTimeout(() => {
+      setTileDefinition({
+        isOpen: true,
+        word,
+        jyutping: wordEntry?.jyutping || info?.jyutping || "",
+        eng: wordEntry?.eng || info?.eng || "",
+      });
+    }, 700);
+  };
+
+  const handleWordHoverEnd = () => {
+    hideTileDefinition();
+  };
+
   useEffect(() => {
-    const bag = createTileBag(sourceDictData);
+    const bag = createTileBag(sourceDictData, `g${gameSessionRef.current}-`);
     const rack1 = bag.splice(0, RACK_SIZE);
     const rack2 = bag.splice(0, RACK_SIZE);
     setTileBag(bag);
-    setRacks({ 1: rack1, 2: rack2 });
+    const initialRacks = { 1: rack1, 2: rack2 };
+    racksRef.current = initialRacks;
+    setRacks(initialRacks);
   }, []);
 
   const returnTileToRack = (tileId) => {
-    let tileObject = null;
+    const tileObject = board.flat().find((tile) => tile?.id === tileId);
+
+    if (!tileObject) return;
 
     setBoard((prev) => {
       const next = prev.map((r) => [...r]);
       for (let r = 0; r < BOARD_SIZE; r += 1) {
         for (let c = 0; c < BOARD_SIZE; c += 1) {
           if (next[r][c]?.id === tileId) {
-            tileObject = {
-              id: next[r][c].id,
-              char: next[r][c].char,
-              jyutping: next[r][c].jyutping,
-              points: next[r][c].points,
-            };
             next[r][c] = null;
           }
         }
@@ -100,14 +196,24 @@ export function useGameState() {
       return next;
     });
 
-    if (tileObject) {
-      if (soundEnabled) sound.playRecall();
-      setRacks((prev) => ({
+    if (soundEnabled) sound.playRecall();
+    setRacks((prev) => {
+      const next = {
         ...prev,
-        [currentPlayer]: [...prev[currentPlayer], tileObject],
-      }));
-      setPlacementsThisTurn((prev) => prev.filter((p) => p.id !== tileId));
-    }
+        [currentPlayer]: [
+          ...prev[currentPlayer],
+          {
+            id: tileObject.id,
+            char: tileObject.char,
+            jyutping: tileObject.jyutping,
+            points: tileObject.points,
+          },
+        ],
+      };
+      racksRef.current = next;
+      return next;
+    });
+    setPlacementsThisTurn((prev) => prev.filter((p) => p.id !== tileId));
   };
 
   const placeTileOnBoard = (tileData, row, col) => {
@@ -116,10 +222,14 @@ export function useGameState() {
     setBoard((prev) => {
       const next = prev.map((r) => [...r]);
 
-      for (let r = 0; r < BOARD_SIZE; r += 1) {
-        for (let c = 0; c < BOARD_SIZE; c += 1) {
-          if (next[r][c]?.id === tileId) {
-            next[r][c] = null;
+      // Only relocate an existing board tile when the drag source is already on the board.
+      // Rack-origin placements should never clear another board tile by id.
+      if (!tileData.isRackTile) {
+        for (let r = 0; r < BOARD_SIZE; r += 1) {
+          for (let c = 0; c < BOARD_SIZE; c += 1) {
+            if (next[r][c]?.id === tileId) {
+              next[r][c] = null;
+            }
           }
         }
       }
@@ -160,31 +270,43 @@ export function useGameState() {
 
   const handleDragStart = (event) => {
     if (soundEnabled) sound.playTick();
+    hideTileDefinition();
     setActiveDragId(event.active.id);
   };
 
   const handleDragEnd = (event) => {
     setActiveDragId(null);
     const { active, over } = event;
-    if (!over) return;
-
     const activeTileData = active.data.current;
-    const overId = over.id;
 
-    if (overId === 'rack-droppable' || over.data.current?.isRack) {
-      if (!activeTileData.isRackTile) {
+    if (!over) {
+      // If a newly placed board tile is dropped outside any valid zone, snap it back to rack.
+      if (!activeTileData.isRackTile && activeTileData.isNew) {
         returnTileToRack(activeTileData.id);
       }
       return;
     }
 
-    if (overId.startsWith('board-')) {
-      const [, rowStr, colStr] = overId.split('-');
+    const overId = over.id;
+
+    if (overId === "rack-droppable" || over.data.current?.isRack) {
+      if (!activeTileData.isRackTile && activeTileData.isNew) {
+        returnTileToRack(activeTileData.id);
+      }
+      return;
+    }
+
+    if (overId.startsWith("board-")) {
+      if (!activeTileData.isRackTile && !activeTileData.isNew) {
+        return;
+      }
+
+      const [, rowStr, colStr] = overId.split("-");
       const row = parseInt(rowStr, 10);
       const col = parseInt(colStr, 10);
 
       if (board[row][col] !== null) {
-        triggerAlert('Square is already occupied! 該位置已有字牌');
+        triggerAlert("Square is already occupied! 該位置已有字牌");
         return;
       }
 
@@ -201,7 +323,7 @@ export function useGameState() {
     }
     if (isRackTile) {
       setSelectedTileId(tile.id === selectedTileId ? null : tile.id);
-    } else {
+    } else if (tile.isNew) {
       returnTileToRack(tile.id);
     }
   };
@@ -214,7 +336,7 @@ export function useGameState() {
     if (!tileToPlace) return;
 
     if (board[row][col] !== null) {
-      triggerAlert('Square is already occupied! 該位置已有字牌');
+      triggerAlert("Square is already occupied! 該位置已有字牌");
       return;
     }
 
@@ -263,14 +385,15 @@ export function useGameState() {
   };
 
   const endGame = () => {
-    const latestScores = scoresRef.current;
-    const latestRacks = racksRef.current;
+    const latestScores = scoresRef.current || scores;
+    // const latestRacks = racksRef.current || racks;
 
-    const rack1Val = latestRacks[1].reduce((sum, t) => sum + t.points, 0);
-    const rack2Val = latestRacks[2].reduce((sum, t) => sum + t.points, 0);
+    // const rack1Val = (latestRacks[1] || []).reduce((sum, t) => sum + t.points, 0);
+    // const rack2Val = (latestRacks[2] || []).reduce((sum, t) => sum + t.points, 0);
 
-    const final1 = Math.max(0, latestScores[1] - rack1Val);
-    const final2 = Math.max(0, latestScores[2] - rack2Val);
+    // For now we don't take count of rack value
+    const final1 = Math.max(0, Number(latestScores[1] ?? 0));
+    const final2 = Math.max(0, Number(latestScores[2] ?? 0));
     const finalScores = { 1: final1, 2: final2 };
 
     setEndScores(finalScores);
@@ -278,7 +401,7 @@ export function useGameState() {
     let winner;
     if (final1 > final2) winner = 1;
     else if (final2 > final1) winner = 2;
-    else winner = 'TIE';
+    else winner = "TIE";
 
     setGameWinner(winner);
     if (soundEnabled) sound.playVictory();
@@ -296,6 +419,11 @@ export function useGameState() {
   };
 
   const handleSubmit = () => {
+    console.groupCollapsed("[handleSubmit] start");
+    console.log("currentPlayer:", currentPlayer);
+    console.log("placementsThisTurn:", placementsThisTurn);
+    console.log("board snapshot:", board);
+
     const submission = validateTurnSubmission({
       board,
       placements: placementsThisTurn,
@@ -306,9 +434,13 @@ export function useGameState() {
     });
 
     if (!submission.ok) {
+      console.warn("[handleSubmit] validation failed:", submission.error);
+      console.groupEnd();
       triggerAlert(submission.error);
       return;
     }
+
+    console.log("[handleSubmit] validation passed:", submission);
 
     setBoard((prev) => {
       const next = prev.map((r) => [...r]);
@@ -320,33 +452,49 @@ export function useGameState() {
       return next;
     });
 
-    setScores((prev) => ({
-      ...prev,
-      [currentPlayer]: prev[currentPlayer] + submission.score,
-    }));
+    setScores((prev) => {
+      const next = {
+        ...prev,
+        [currentPlayer]: prev[currentPlayer] + submission.score,
+      };
+      scoresRef.current = next;
+      return next;
+    });
 
     const rackAfterPlay = racks[currentPlayer].filter(
-      (t) => !placementsThisTurn.find((p) => p.id === t.id)
+      (t) => !placementsThisTurn.find((p) => p.id === t.id),
     );
     const rackRefillCount = Math.max(0, RACK_SIZE - rackAfterPlay.length);
     const newBag = [...tileBag];
     const newRackTiles = newBag.splice(0, rackRefillCount);
 
     setTileBag(newBag);
-    setRacks((prev) => ({
-      ...prev,
-      [currentPlayer]: [...prev[currentPlayer], ...newRackTiles],
-    }));
+    setRacks((prev) => {
+      const next = {
+        ...prev,
+        [currentPlayer]: [...prev[currentPlayer], ...newRackTiles],
+      };
+      racksRef.current = next;
+      return next;
+    });
 
     if (soundEnabled) {
       submission.isBingo ? sound.playVictory() : sound.playCorrect();
     }
 
-    const loggedWords = submission.validatedWords.map((w) => `${w.word} (${w.jyutping})`);
+    const loggedWords = submission.validatedWords.map(
+      (w) => `${w.word} (${w.jyutping})`,
+    );
+    const validatedWordEntries = submission.validatedWords.map((w) => ({
+      word: w.word,
+      jyutping: w.jyutping,
+      eng: w.eng,
+    }));
     setHistory((prev) => [
       {
         player: currentPlayer,
-        words: loggedWords.join(', '),
+        words: loggedWords.join(", "),
+        validatedWords: validatedWordEntries,
         score: submission.score,
         bingo: submission.isBingo,
       },
@@ -366,45 +514,12 @@ export function useGameState() {
     setPlacementsThisTurn([]);
     setConsecutivePasses(0);
     setSelectedTileId(null);
-  };
-
-  const handleRestart = (dictionaryOverride = customDictionary) => {
-    if (soundEnabled) sound.playTick();
-
-    const sourceDictionary = dictionaryOverride ?? sourceDictData;
-    const bag = createTileBag(sourceDictionary);
-    const rack1 = bag.splice(0, RACK_SIZE);
-    const rack2 = bag.splice(0, RACK_SIZE);
-
-    setCustomDictionary(dictionaryOverride ?? null);
-    setTileBag(bag);
-    setRacks({ 1: rack1, 2: rack2 });
-    setBoard(createEmptyBoard());
-    setScores({ 1: 0, 2: 0 });
-    setEndScores(null);
-    setCurrentPlayer(1);
-    setPlacementsThisTurn([]);
-    setConsecutivePasses(0);
-    setHistory([]);
-    setGameWinner(null);
-    setWordModal({
-      isOpen: false,
-      word: '',
-      jyutping: '',
-      eng: '',
-      score: 0,
-      isBingo: false,
-    });
-    setSelectedTileId(null);
-    setIsRackHidden(false);
-    setShowInterstitial(false);
-    setIsExchangeMode(false);
-    setExchangeSelected(new Set());
+    console.groupEnd();
   };
 
   const handleStartExchange = () => {
     if (placementsThisTurn.length > 0) {
-      triggerAlert('Recall your tiles before exchanging! 請先收回字牌');
+      triggerAlert("Recall your tiles before exchanging! 請先收回字牌");
       return;
     }
     setIsExchangeMode(true);
@@ -421,17 +536,19 @@ export function useGameState() {
 
   const handleConfirmExchange = () => {
     if (exchangeSelected.size === 0) {
-      triggerAlert('Select at least one tile to exchange! 請選擇字牌');
+      triggerAlert("Select at least one tile to exchange! 請選擇字牌");
       return;
     }
     if (exchangeSelected.size > tileBag.length) {
-      triggerAlert('Not enough tiles in the bag! 字袋字牌不足');
+      triggerAlert("Not enough tiles in the bag! 字袋字牌不足");
       return;
     }
 
     const newBag = [...tileBag];
     const drawn = newBag.splice(0, exchangeSelected.size);
-    const discarded = racks[currentPlayer].filter((t) => exchangeSelected.has(t.id));
+    const discarded = racks[currentPlayer].filter((t) =>
+      exchangeSelected.has(t.id),
+    );
     newBag.push(...discarded);
 
     for (let i = newBag.length - 1; i > 0; i -= 1) {
@@ -445,15 +562,17 @@ export function useGameState() {
     ];
 
     setTileBag(newBag);
-    setRacks((prev) => ({ ...prev, [currentPlayer]: newRack }));
+    setRacks((prev) => {
+      const next = { ...prev, [currentPlayer]: newRack };
+      racksRef.current = next;
+      return next;
+    });
     setIsExchangeMode(false);
     setExchangeSelected(new Set());
 
-    const nextPassCount = consecutivePasses + 1;
-    setConsecutivePasses(nextPassCount);
-
-    if (nextPassCount >= 2) endGame();
-    else transitionTurn();
+    // Exchanges should not count as consecutive passes.
+    setConsecutivePasses(0);
+    transitionTurn();
   };
 
   const handleCancelExchange = () => {
@@ -470,17 +589,23 @@ export function useGameState() {
       try {
         const data = JSON.parse(e.target.result);
         const firstEntry = Array.isArray(data) ? data[0] : null;
-        const hasWord = firstEntry && (firstEntry.variant || firstEntry.v || firstEntry.word);
-        const hasPronunciation = firstEntry && (firstEntry.jyutping || firstEntry.j);
-        if (Array.isArray(data) && data.length > 0 && hasWord && hasPronunciation) {
+        const hasWord =
+          firstEntry && (firstEntry.variant || firstEntry.v || firstEntry.word);
+        const hasPronunciation =
+          firstEntry && (firstEntry.jyutping || firstEntry.j);
+        if (
+          Array.isArray(data) &&
+          data.length > 0 &&
+          hasWord &&
+          hasPronunciation
+        ) {
           setCustomDictionary(data);
           triggerAlert(`Loaded custom dictionary! (${data.length} entries)`);
-          handleRestart(data);
         } else {
-          triggerAlert('Invalid JSON dictionary format! 格式錯誤');
+          triggerAlert("Invalid JSON dictionary format! 格式錯誤");
         }
       } catch (err) {
-        triggerAlert('Error parsing file! 無法解析檔案');
+        triggerAlert("Error parsing file! 無法解析檔案");
       }
     };
     reader.readAsText(file);
@@ -505,6 +630,7 @@ export function useGameState() {
     history,
     gameWinner,
     endScores,
+    tileDefinition,
 
     // actions
     setSoundEnabled,
@@ -519,11 +645,14 @@ export function useGameState() {
     transitionTurn,
     startNextTurn,
     handleSubmit,
-    handleRestart,
     handleStartExchange,
     handleToggleExchangeTile,
     handleConfirmExchange,
     handleCancelExchange,
     handleDictionaryUpload,
+    handleTileHoverStart,
+    handleTileHoverEnd,
+    handleWordHoverStart,
+    handleWordHoverEnd,
   };
 }

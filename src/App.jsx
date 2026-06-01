@@ -1,12 +1,23 @@
-import React, { useMemo } from 'react';
-import { DndContext, DragOverlay } from '@dnd-kit/core';
-import { Board } from './components/Board';
-import { Rack } from './components/Rack';
-import { Tile } from './components/Tile';
-import sound from './components/SoundSynth';
-import { useGameState } from './hooks/useGameState';
+import React, { useMemo } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { Board } from "./components/Board";
+import { Rack } from "./components/Rack";
+import { Tile } from "./components/Tile";
+import sound from "./components/SoundSynth";
+import { useGameState } from "./hooks/useGameState";
 
 function App() {
+  const reloadGame = () => {
+    window.location.reload();
+  };
+
   const {
     tileBag,
     board,
@@ -22,6 +33,7 @@ function App() {
     exchangeSelected,
     alertMessage,
     wordModal,
+    tileDefinition,
     history,
     gameWinner,
     endScores,
@@ -37,15 +49,35 @@ function App() {
     transitionTurn,
     startNextTurn,
     handleSubmit,
-    handleRestart,
     handleStartExchange,
     handleConfirmExchange,
     handleCancelExchange,
     handleDictionaryUpload,
+    handleTileHoverStart,
+    handleTileHoverEnd,
+    handleWordHoverStart,
+    handleWordHoverEnd,
   } = useGameState();
+
+  const sensors = useSensors(
+    useSensor(MouseSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 180,
+        tolerance: 6,
+      },
+    }),
+  );
 
   const renderTile = (tile, isRackTile, isSelected) => {
     const isExchangeSelected = isExchangeMode && exchangeSelected.has(tile.id);
+    const isNew = isRackTile ? false : Boolean(tile.isNew);
+    const disableDrag =
+      (isExchangeMode && isRackTile) || (!isRackTile && !isNew);
     return (
       <Tile
         key={tile.id}
@@ -54,9 +86,13 @@ function App() {
         jyutping={tile.jyutping}
         points={tile.points}
         isRackTile={isRackTile}
+        isNew={isNew}
         isSelected={isSelected}
         isExchangeSelected={isExchangeSelected}
+        disableDrag={disableDrag}
         onClick={() => handleTileClick(tile, isRackTile)}
+        onHoverStart={() => handleTileHoverStart(tile)}
+        onHoverEnd={handleTileHoverEnd}
       />
     );
   };
@@ -64,40 +100,30 @@ function App() {
   const activeTileData = useMemo(
     () =>
       activeDragId
-        ? [...racks[1], ...racks[2], ...board.flat().filter(Boolean)].find((t) => t.id === activeDragId)
+        ? [...racks[1], ...racks[2], ...board.flat().filter(Boolean)].find(
+            (t) => t.id === activeDragId,
+          )
         : null,
-    [activeDragId, racks, board]
+    [activeDragId, racks, board],
   );
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <div className="scrabble-app-container">
         <div className="glow-blob glow-left"></div>
         <div className="glow-blob glow-right"></div>
 
         <div className="game-wrapper-grid">
           <div className="left-game-panel">
-            <header className="game-main-header">
-              <div className="title-wrapper">
-                <h1>粵拼拼字</h1>
-                <span className="subtitle">Cantonese Scrabble</span>
-              </div>
-
-              <button
-                className={`btn-text btn-sound ${soundEnabled ? 'active' : ''}`}
-                onClick={() => setSoundEnabled(!soundEnabled)}
-              >
-                {soundEnabled ? '🔊 Sound: On' : '🔇 Sound: Off'}
-              </button>
-            </header>
-
-            {alertMessage && (
-              <div className="game-alert-banner shake">
-                <span>⚠️ {alertMessage}</span>
-              </div>
-            )}
-
-            <Board boardState={board} onSquareClick={handleSquareClick} renderTile={renderTile} />
+            <Board
+              boardState={board}
+              onSquareClick={handleSquareClick}
+              renderTile={renderTile}
+            />
 
             <Rack
               tiles={racks[currentPlayer]}
@@ -105,16 +131,26 @@ function App() {
               renderTile={renderTile}
               isHidden={isRackHidden}
               onToggleHide={() => setIsRackHidden(!isRackHidden)}
+              alertMessage={alertMessage}
             />
 
             {isExchangeMode ? (
               <div className="action-buttons-wrapper exchange-mode-bar">
-                <p className="exchange-hint">Tap tiles on your rack to select them for exchange • 點選字牌換牌</p>
+                <p className="exchange-hint">
+                  Tap tiles on your rack to select them for exchange •
+                  點選字牌換牌
+                </p>
                 <div className="exchange-actions">
-                  <button className="btn-game btn-pass" onClick={handleCancelExchange}>
+                  <button
+                    className="btn-game btn-pass"
+                    onClick={handleCancelExchange}
+                  >
                     ✕ Cancel • 取消
                   </button>
-                  <button className="btn-game btn-submit-game" onClick={handleConfirmExchange}>
+                  <button
+                    className="btn-game btn-submit-game"
+                    onClick={handleConfirmExchange}
+                  >
                     🔁 Confirm Exchange ({exchangeSelected.size}) • 確認換牌
                   </button>
                 </div>
@@ -124,13 +160,19 @@ function App() {
                 <button className="btn-game btn-recall" onClick={handleRecall}>
                   🔄 Recall • 重收
                 </button>
-                <button className="btn-game btn-exchange" onClick={handleStartExchange}>
+                <button
+                  className="btn-game btn-exchange"
+                  onClick={handleStartExchange}
+                >
                   🔁 Exchange • 換牌
                 </button>
                 <button className="btn-game btn-pass" onClick={handlePass}>
                   ⏭️ Pass • 跳過
                 </button>
-                <button className="btn-game btn-submit-game" onClick={handleSubmit}>
+                <button
+                  className="btn-game btn-submit-game"
+                  onClick={handleSubmit}
+                >
                   ⚡ Submit • 提交
                 </button>
               </div>
@@ -138,18 +180,44 @@ function App() {
           </div>
 
           <div className="right-game-panel">
+            <header className="game-main-header">
+              <div className="title-wrapper">
+                <h1>粵拼拼字</h1>
+                <span className="subtitle">Cantonese Scrabble</span>
+              </div>
+
+              <button
+                className={`btn-text btn-sound ${soundEnabled ? "active" : ""}`}
+                onClick={() => setSoundEnabled(!soundEnabled)}
+              >
+                {soundEnabled ? "🔊 Sound: On" : "🔇 Sound: Off"}
+              </button>
+            </header>
+
             <div className="score-card-panel">
               <h3>Scoreboard • 計分板</h3>
               <div className="player-scores-flex">
-                <div className={`score-box player-1 ${currentPlayer === 1 ? 'active-turn' : ''}`}>
-                  <span className="player-title">Player 1 {currentPlayer === 1 ? '⚡' : ''}</span>
+                <div
+                  className={`score-box player-1 ${currentPlayer === 1 ? "active-turn" : ""}`}
+                >
+                  <span className="player-title">
+                    Player 1 {currentPlayer === 1 ? "⚡" : ""}
+                  </span>
                   <div className="player-points">{scores[1]}</div>
-                  <span className="rack-count-sub">{racks[1].length} tiles left</span>
+                  <span className="rack-count-sub">
+                    {racks[1].length} tiles left
+                  </span>
                 </div>
-                <div className={`score-box player-2 ${currentPlayer === 2 ? 'active-turn' : ''}`}>
-                  <span className="player-title">Player 2 {currentPlayer === 2 ? '⚡' : ''}</span>
+                <div
+                  className={`score-box player-2 ${currentPlayer === 2 ? "active-turn" : ""}`}
+                >
+                  <span className="player-title">
+                    Player 2 {currentPlayer === 2 ? "⚡" : ""}
+                  </span>
                   <div className="player-points">{scores[2]}</div>
-                  <span className="rack-count-sub">{racks[2].length} tiles left</span>
+                  <span className="rack-count-sub">
+                    {racks[2].length} tiles left
+                  </span>
                 </div>
               </div>
 
@@ -168,9 +236,28 @@ function App() {
                 ) : (
                   history.map((h, i) => (
                     <div key={i} className="log-row">
-                      <span className={`log-player p-${h.player}`}>P{h.player}</span>
-                      <span className="log-words">{h.words}</span>
-                      <span className="log-score">+{h.score} pts {h.bingo && '🔥 Bingo!'}</span>
+                      <span className={`log-player p-${h.player}`}>
+                        P{h.player}
+                      </span>
+                      <span className="log-words">
+                        {Array.isArray(h.validatedWords) &&
+                        h.validatedWords.length > 0
+                          ? h.validatedWords.map((w, idx) => (
+                              <span
+                                key={`${w.word}-${idx}`}
+                                className="log-word-item"
+                                onMouseEnter={() => handleWordHoverStart(w)}
+                                onMouseLeave={handleWordHoverEnd}
+                              >
+                                {w.word}
+                                {idx < h.validatedWords.length - 1 ? ", " : ""}
+                              </span>
+                            ))
+                          : h.words}
+                      </span>
+                      <span className="log-score">
+                        +{h.score} pts {h.bingo && "🔥 Bingo!"}
+                      </span>
                     </div>
                   ))
                 )}
@@ -182,13 +269,20 @@ function App() {
 
               <div className="custom-file-upload">
                 <label className="file-label">
-                  📁 Load Custom Dictionary JSON
-                  <input type="file" accept=".json" onChange={handleDictionaryUpload} />
+                  📁 Load Custom Dictionary JSON (This doesn't work =])
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleDictionaryUpload}
+                  />
                 </label>
-                <p className="file-help">Upload a custom dictionary JSON in the words-hk inspired schema format.</p>
+                <p className="file-help">
+                  Upload a custom dictionary JSON in the words-hk inspired
+                  schema format.
+                </p>
               </div>
 
-              <button className="btn-game btn-restart" onClick={handleRestart}>
+              <button className="btn-game btn-restart" onClick={reloadGame}>
                 ⚠️ Reset Game • 重開新局
               </button>
             </div>
@@ -198,15 +292,23 @@ function App() {
         {showInterstitial && (
           <div className="turn-overlay-interstitial">
             <div className="interstitial-card">
-              <h2>Player {currentPlayer === 1 ? '1' : '2'}'s Turn is Complete!</h2>
-              <p>Please pass the device to **Player {currentPlayer === 1 ? '2' : '1'}`**.</p>
+              <h2>
+                Player {currentPlayer === 1 ? "1" : "2"}'s Turn is Complete!
+              </h2>
+              <p>
+                Please pass the device to **Player{" "}
+                {currentPlayer === 1 ? "2" : "1"}`**.
+              </p>
 
               <div className="security-notice-blur">
                 <span>🔒 Opponent tiles are currently secured</span>
               </div>
 
-              <button className="btn-primary-interstitial" onClick={startNextTurn}>
-                Start Player {currentPlayer === 1 ? '2' : '1'}'s Turn ⚡
+              <button
+                className="btn-primary-interstitial"
+                onClick={startNextTurn}
+              >
+                Start Player {currentPlayer === 1 ? "2" : "1"}'s Turn ⚡
               </button>
             </div>
           </div>
@@ -215,7 +317,9 @@ function App() {
         {wordModal.isOpen && (
           <div className="celebration-modal-overlay">
             <div className="celebration-card animate-zoom">
-              {wordModal.isBingo && <div className="bingo-badge">🔥 BINGO (+50)</div>}
+              {wordModal.isBingo && (
+                <div className="bingo-badge">🔥 BINGO (+50)</div>
+              )}
               <span className="celebration-sparkles">✨ 合法詞語 ✨</span>
               <h2 className="celebration-word">{wordModal.word}</h2>
               <p className="celebration-jyutping">{wordModal.jyutping}</p>
@@ -240,30 +344,46 @@ function App() {
           </div>
         )}
 
+        {tileDefinition.isOpen && (
+          <div className="tile-definition-card">
+            <span className="tile-definition-label">Definition Lookup</span>
+            <h3 className="tile-definition-word">{tileDefinition.word}</h3>
+            <p className="tile-definition-jyutping">
+              {tileDefinition.jyutping}
+            </p>
+            <p className="tile-definition-eng">{tileDefinition.eng}</p>
+          </div>
+        )}
+
         {gameWinner && (
           <div className="celebration-modal-overlay game-over-overlay">
             <div className="celebration-card game-over-card">
               <span className="celebration-sparkles">🏁 遊戲結束 🏁</span>
               <h2>Game Over!</h2>
 
-              {gameWinner === 'TIE' ? (
+              {gameWinner === "TIE" ? (
                 <h3 className="winner-declaration">It's a Tie! 平局 🤝</h3>
               ) : (
-                <h3 className="winner-declaration">Player {gameWinner} Wins! 獲勝 🏆</h3>
+                <h3 className="winner-declaration">
+                  Player {gameWinner} Wins! 獲勝 🏆
+                </h3>
               )}
 
               <div className="final-scoreboard-summary">
                 <div className="final-row">
                   <span>Player 1 Score:</span>
-                  <strong>{endScores ? endScores[1] : scores[1]}</strong>
+                  <strong>{endScores?.[1] ?? scores[1] ?? 0}</strong>
                 </div>
                 <div className="final-row">
                   <span>Player 2 Score:</span>
-                  <strong>{endScores ? endScores[2] : scores[2]}</strong>
+                  <strong>{endScores?.[2] ?? scores[2] ?? 0}</strong>
                 </div>
               </div>
 
-              <button className="btn-celebration-close btn-final-restart" onClick={handleRestart}>
+              <button
+                className="btn-celebration-close btn-final-restart"
+                onClick={reloadGame}
+              >
                 Play New Game ⚡
               </button>
             </div>

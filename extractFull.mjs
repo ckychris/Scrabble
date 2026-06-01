@@ -1,11 +1,11 @@
 // extractFull.mjs - uses already-downloaded local CSV to avoid re-fetching
-import { parseCsvFile } from 'words-hk-parse';
-import fs from 'fs';
-import path from 'path';
+import { parseCsvFile } from "words-hk-parse";
+import fs from "fs";
+import path from "path";
 
-console.log('Parsing local CSV (already downloaded)...');
+console.log("Parsing local CSV (already downloaded)...");
 
-const entries = await parseCsvFile('./csvs/all-1780171501.csv');
+const entries = await parseCsvFile("./csvs/all-1780171501.csv");
 console.log(`Parsed ${entries.length} entries`);
 
 const wordSetArr = [];
@@ -15,7 +15,7 @@ for (const entry of entries) {
   if (!entry.headwords || entry.headwords.length === 0) continue;
 
   // Get first English definition
-  let engDef = '';
+  let engDef = "";
   if (entry.senses && entry.senses.length > 0) {
     const s = entry.senses[0];
     if (s.explanation && s.explanation.eng && s.explanation.eng.length > 0) {
@@ -26,7 +26,8 @@ for (const entry of entries) {
   for (const hw of entry.headwords) {
     if (!hw.text || hw.text.trim().length === 0) continue;
     const variant = hw.text.trim();
-    const jyutping = (hw.readings && hw.readings.length > 0) ? hw.readings[0] : '';
+    const jyutping =
+      hw.readings && hw.readings.length > 0 ? hw.readings[0] : "";
 
     wordSetArr.push(variant);
     richDict.push({ v: variant, j: jyutping, e: engDef });
@@ -36,18 +37,46 @@ for (const entry of entries) {
 const uniqueWords = [...new Set(wordSetArr)];
 console.log(`Unique word variants: ${uniqueWords.length}`);
 console.log(`Rich dict entries: ${richDict.length}`);
+// Fill in missing jyutping by reconstructing from individual characters
+const charMap = {};
+for (const entry of richDict) {
+  if (!entry.j || entry.j.trim() === "") continue;
+  const jyutpingList = entry.j.split(/\s+/);
+  for (let i = 0; i < entry.v.length; i++) {
+    const char = entry.v[i];
+    if (!charMap[char]) charMap[char] = jyutpingList[i];
+  }
+}
 
-const outDir = path.join('src', 'data');
+let filled = 0;
+for (const entry of richDict) {
+  if (!entry.j || entry.j.trim() === "") {
+    const reconstructed = [];
+    for (const char of entry.v) {
+      reconstructed.push(charMap[char] || "");
+    }
+    entry.j = reconstructed.join(" ").trim();
+    if (entry.j) filled++;
+  }
+}
+if (filled > 0) {
+  console.log(`Filled ${filled} entries with reconstructed jyutping`);
+}
+const outDir = path.join("src", "data");
 fs.mkdirSync(outDir, { recursive: true });
 
 // wordSet.json — just an array of unique strings for fast Set() lookup in-game
-const setPath = path.join(outDir, 'wordSet.json');
-fs.writeFileSync(setPath, JSON.stringify(uniqueWords), 'utf-8');
-console.log(`wordSet.json → ${(fs.statSync(setPath).size / 1024 / 1024).toFixed(2)} MB`);
+const setPath = path.join(outDir, "wordSet.json");
+fs.writeFileSync(setPath, JSON.stringify(uniqueWords), "utf-8");
+console.log(
+  `wordSet.json → ${(fs.statSync(setPath).size / 1024 / 1024).toFixed(2)} MB`,
+);
 
 // cantoneseDictionary.json — compact {v,j,e} objects for tile bag + popups
-const richPath = path.join(outDir, 'cantoneseDictionary.json');
-fs.writeFileSync(richPath, JSON.stringify(richDict), 'utf-8');
-console.log(`cantoneseDictionary.json → ${(fs.statSync(richPath).size / 1024 / 1024).toFixed(2)} MB`);
+const richPath = path.join(outDir, "cantoneseDictionary.json");
+fs.writeFileSync(richPath, JSON.stringify(richDict), "utf-8");
+console.log(
+  `cantoneseDictionary.json → ${(fs.statSync(richPath).size / 1024 / 1024).toFixed(2)} MB`,
+);
 
-console.log('Done!');
+console.log("Done!");
