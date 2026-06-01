@@ -40,6 +40,7 @@ export function useGameState() {
     word: "",
     jyutping: "",
     eng: "",
+    validatedWords: [],
     score: 0,
     isBingo: false,
   });
@@ -507,6 +508,11 @@ export function useGameState() {
       word: primaryWord.word,
       jyutping: primaryWord.jyutping,
       eng: primaryWord.eng,
+      validatedWords: submission.validatedWords.map((w) => ({
+        word: w.word,
+        jyutping: w.jyutping,
+        eng: w.eng,
+      })),
       score: submission.score,
       isBingo: submission.isBingo,
     });

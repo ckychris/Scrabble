@@ -321,9 +321,22 @@ function App() {
                 <div className="bingo-badge">🔥 BINGO (+50)</div>
               )}
               <span className="celebration-sparkles">✨ 合法詞語 ✨</span>
-              <h2 className="celebration-word">{wordModal.word}</h2>
-              <p className="celebration-jyutping">{wordModal.jyutping}</p>
-              <p className="celebration-eng">{wordModal.eng}</p>
+              {Array.isArray(wordModal.validatedWords) &&
+              wordModal.validatedWords.length > 0 ? (
+                wordModal.validatedWords.map((w, idx) => (
+                  <div key={`${w.word}-${idx}`}>
+                    <h2 className="celebration-word">{w.word}</h2>
+                    <p className="celebration-jyutping">{w.jyutping}</p>
+                    <p className="celebration-eng">{w.eng}</p>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <h2 className="celebration-word">{wordModal.word}</h2>
+                  <p className="celebration-jyutping">{wordModal.jyutping}</p>
+                  <p className="celebration-eng">{wordModal.eng}</p>
+                </>
+              )}
 
               <div className="celebration-score-box">
                 <span className="score-label">Turn Score</span>

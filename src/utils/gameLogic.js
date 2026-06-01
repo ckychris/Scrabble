@@ -401,27 +401,66 @@ export function validateTurnSubmission({
   const validatedWords = [];
   const invalidWords = [];
   for (const formed of formedWords) {
-    // Beginner mode: evaluate full word first, then suffixes (BCDE, CDE, DE), longest first.
+    // Direction-aware beginner mode:
+    // - If the new tile is on the left/top edge of the chain, trim from right/bottom.
+    // - If the new tile is on the right/bottom edge, trim from left/top.
+    // - Never validate a candidate that contains zero newly placed tiles.
     const suffixCandidates = [];
-    for (let start = 0; start <= formed.coords.length - 2; start += 1) {
-      const candidateCoords = formed.coords.slice(start);
-      if (candidateCoords.length < 2) continue;
+    const chainLen = formed.coords.length;
+    const hasNewAtStart = Boolean(formed.coords[0]?.tile?.isNew);
+    const hasNewAtEnd = Boolean(formed.coords[chainLen - 1]?.tile?.isNew);
+    const trimFromStart = !hasNewAtStart || hasNewAtEnd;
 
-      const candidateWord = candidateCoords
-        .map((coord) => coord.tile.char)
-        .join("");
-      const candidateJyutping = candidateCoords
-        .map((coord) => coord.tile.jyutping || "")
-        .join(" ")
-        .trim();
+    if (trimFromStart) {
+      for (let start = 0; start <= chainLen - 2; start += 1) {
+        const candidateCoords = formed.coords.slice(start);
+        if (candidateCoords.length < 2) continue;
+        if (!isFirstTurn && candidateCoords.length <= placements.length)
+          continue;
+        if (!candidateCoords.some((coord) => coord.tile?.isNew)) continue;
 
-      suffixCandidates.push({
-        ...formed,
-        word: candidateWord,
-        jyutping: candidateJyutping,
-        coords: candidateCoords,
-        startOffset: start,
-      });
+        const candidateWord = candidateCoords
+          .map((coord) => coord.tile.char)
+          .join("");
+        const candidateJyutping = candidateCoords
+          .map((coord) => coord.tile.jyutping || "")
+          .join(" ")
+          .trim();
+
+        suffixCandidates.push({
+          ...formed,
+          word: candidateWord,
+          jyutping: candidateJyutping,
+          coords: candidateCoords,
+          trimSide: "start",
+          offset: start,
+        });
+      }
+    } else {
+      for (let end = chainLen; end >= 2; end -= 1) {
+        const candidateCoords = formed.coords.slice(0, end);
+        if (candidateCoords.length < 2) continue;
+        if (!isFirstTurn && candidateCoords.length <= placements.length)
+          continue;
+        if (!candidateCoords.some((coord) => coord.tile?.isNew)) continue;
+
+        const candidateWord = candidateCoords
+          .map((coord) => coord.tile.char)
+          .join("");
+        const candidateJyutping = candidateCoords
+          .map((coord) => coord.tile.jyutping || "")
+          .join(" ")
+          .trim();
+
+        suffixCandidates.push({
+          ...formed,
+          word: candidateWord,
+          jyutping: candidateJyutping,
+          coords: candidateCoords,
+          trimSide: "end",
+          offset: chainLen - end,
+        });
+      }
     }
 
     let matched = null;
@@ -440,7 +479,8 @@ export function validateTurnSubmission({
 
       console.log("dictionary lookup:", candidate.word, {
         sourceWord: formed.word,
-        startOffset: candidate.startOffset,
+        trimSide: candidate.trimSide,
+        offset: candidate.offset,
         formedJyutping: candidate.jyutping,
         inWordSet: wordSet.has(candidate.word),
         exactInfo,
