@@ -1,0 +1,190 @@
+/* PREMIUM TILES STYLING */
+.game-tile {
+  position: absolute;
+  width: 90%;
+  height: 90%;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.96),
+      rgba(247, 245, 240, 0.98) 52%,
+      rgba(234, 227, 216, 0.98)
+    ),
+    var(--tile-base);
+  border-radius: 8px;
+  box-shadow:
+    0 4px 0 rgba(28, 42, 57, 0.08),
+    0 10px 18px rgba(28, 42, 57, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -3px 0 rgba(125, 103, 82, 0.16);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid var(--tile-border);
+  cursor: grab;
+  z-index: 10;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    border-color 0.15s;
+  overflow: hidden;
+}
+
+.game-tile.rack-tile {
+  cursor: grab;
+}
+
+.game-tile.board-tile {
+  cursor: pointer;
+}
+
+.game-tile.locked-board-tile {
+  cursor: default;
+}
+
+.game-tile:active {
+  cursor: grabbing;
+}
+
+.game-tile.rack-tile {
+  width: 92%;
+  height: 92%;
+}
+
+.game-tile.board-tile {
+  width: 90%;
+  height: 90%;
+}
+
+.game-tile:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 7px 0 rgba(28, 42, 57, 0.08),
+    0 14px 22px rgba(28, 42, 57, 0.18);
+}
+
+.game-tile.selected {
+  border-color: var(--action-primary);
+  box-shadow:
+    0 0 0 2px rgba(11, 122, 75, 0.2),
+    0 8px 18px rgba(28, 42, 57, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -3px 0 rgba(125, 103, 82, 0.16);
+  transform: translateY(-4px) scale(1.04);
+}
+
+.game-tile.dragging {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 14px 26px rgba(28, 42, 57, 0.28);
+}
+
+.game-tile.exchange-selected {
+  border-color: var(--board-warm);
+  box-shadow:
+    0 0 0 2px rgba(232, 157, 139, 0.2),
+    0 8px 18px rgba(28, 42, 57, 0.18);
+  transform: translateY(-2px) scale(1.03);
+  outline: 2px solid rgba(232, 157, 139, 0.45);
+}
+
+.tile-wood-texture {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 2px,
+    transparent 2px,
+    transparent 10px
+  );
+  pointer-events: none;
+}
+
+.tile-jyutping {
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-top: -3px;
+  letter-spacing: -0.1px;
+  font-family: var(--font-display);
+}
+
+.game-tile.rack-tile .tile-jyutping {
+  font-size: 0.58rem;
+}
+
+@media (max-width: 480px) {
+  .tile-jyutping {
+    font-size: 0.4rem;
+  }
+}
+
+.tile-char {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: var(--text-main);
+  font-family: var(--font-cjk);
+  line-height: 1.1;
+  margin-top: -1px;
+}
+
+.game-tile.rack-tile .tile-char {
+  font-size: 1.8rem;
+}
+
+@media (max-width: 480px) {
+  .tile-char {
+    font-size: 1.1rem;
+  }
+  .game-tile.rack-tile .tile-char {
+    font-size: 1.25rem;
+  }
+}
+
+.tile-points {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.5rem;
+  font-weight: 900;
+  color: var(--action-primary);
+  font-family: var(--font-display);
+}
+
+.game-tile.rack-tile .tile-points {
+  font-size: 0.56rem;
+}
+
+/* Active dragging overlay */
+.dragging-overlay {
+  width: 50px;
+  height: 50px;
+  transform: scale(1.1);
+  box-shadow: 0 14px 28px rgba(28, 42, 57, 0.28);
+  pointer-events: none;
+  z-index: 10000;
+}
+
+/* Match the dragging overlay text proportions to the rack tiles */
+.dragging-overlay .tile-char {
+  font-size: 1.8rem;
+}
+
+.dragging-overlay .tile-jyutping {
+  font-size: 0.58rem;
+}
+
+.dragging-overlay .tile-points {
+  font-size: 0.56rem;
+}
+
+@media (max-width: 480px) {
+  .dragging-overlay .tile-char {
+    font-size: 1.25rem;
+  }
+}
+

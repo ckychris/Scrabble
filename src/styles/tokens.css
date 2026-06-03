@@ -1,0 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&family=Space+Grotesk:wght@500;700&family=Noto+Sans+TC:wght@400;500;700;900&display=swap");
+
+:root {
+  --canvas: #eae7df;
+  --canvas-tint: rgba(234, 231, 223, 0.78);
+  --panel-surface: rgba(247, 245, 240, 0.9);
+  --panel-surface-strong: #f7f5f0;
+  --panel-border: rgba(28, 42, 57, 0.12);
+  --panel-shadow: rgba(28, 42, 57, 0.15);
+
+  --text-main: #1c2a39;
+  --text-muted: #60707d;
+  --text-soft: #7b8793;
+  --font-display: "Outfit", sans-serif;
+  --font-cjk: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+  --board-empty: #bdd3c7;
+  --board-warm: #e89d8b;
+  --board-gold: #ebc494;
+  --grid-line: #f7f5f0;
+  --board-border: #1c2a39;
+  --board-star: #0b7a4b;
+
+  --tile-base: #f7f5f0;
+  --tile-border: rgba(28, 42, 57, 0.16);
+  --tile-shadow: rgba(28, 42, 57, 0.18);
+
+  --rack-wood: #7d6752;
+  --rack-wood-dark: #5d4c3c;
+
+  --action-primary: #0b7a4b;
+  --action-primary-hover: #09633e;
+  --action-secondary: #253444;
+  --action-secondary-hover: #35485c;
+  --action-neutral: #1c2a39;
+  --alert: #d34e36;
+  --alert-soft: rgba(211, 78, 54, 0.12);
+
+  --accent: #0b7a4b;
+  --accent-glow: rgba(11, 122, 75, 0.22);
+  --primary: #0b7a4b;
+  --primary-glow: rgba(11, 122, 75, 0.22);
+  --secondary: #d34e36;
+  --secondary-glow: rgba(211, 78, 54, 0.2);
+
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

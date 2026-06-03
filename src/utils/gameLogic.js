@@ -1,8 +1,14 @@
 import dictionaryData from "../data/cantoneseDictionary.json";
 import wordSetData from "../data/wordSet.json";
+import { getBoardMultiplier } from "../config/boardConfig";
+import {
+  BINGO_BONUS,
+  BINGO_TILE_COUNT,
+  BOARD_SIZE,
+  RACK_SIZE,
+} from "../config/constants";
 
-export const BOARD_SIZE = 9;
-export const RACK_SIZE = 30;
+export { BOARD_SIZE, RACK_SIZE };
 
 export const DEFAULT_WORD_SET = new Set(wordSetData);
 export const DEFAULT_WORD_INFO_MAP = new Map(
@@ -151,7 +157,6 @@ export function validateTurnSubmission({
   boardSize = BOARD_SIZE,
   wordSet = DEFAULT_WORD_SET,
   wordInfoMap = DEFAULT_WORD_INFO_MAP,
-  getBoardMultiplier,
 }) {
   console.groupCollapsed(
     `[validateTurnSubmission] placements=${placements?.length ?? 0}`,
@@ -579,9 +584,9 @@ export function validateTurnSubmission({
     turnScore += wordPoints * wordMultiplier;
   });
 
-  const isBingo = placements.length === 7;
+  const isBingo = placements.length === BINGO_TILE_COUNT;
   if (isBingo) {
-    turnScore += 50;
+    turnScore += BINGO_BONUS;
     console.log("bingo bonus applied: +50");
   }
 

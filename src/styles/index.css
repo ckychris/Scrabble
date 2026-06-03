@@ -1,0 +1,12 @@
+/* Aggregated stylesheet. Imported once from the app entry point.
+   Order matters for the cascade, so keep these imports in this sequence. */
+
+@import "./tokens.css"; /* fonts + design tokens (:root) */
+@import "./base.css"; /* resets, body, tabletop texture */
+@import "./layout.css"; /* app container, header, status strip */
+@import "./board.css"; /* board grid, squares, multipliers */
+@import "./tile.css"; /* tiles + drag overlay */
+@import "./rack.css"; /* tile rack */
+@import "./buttons.css"; /* action buttons */
+@import "./panels.css"; /* right-side scoreboard + play log */
+@import "./modals.css"; /* interstitial, celebration, definition, game over */

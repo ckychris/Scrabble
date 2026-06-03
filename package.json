@@ -1,5 +1,6 @@
 {
-  "name": "temp-vite",
+  "name": "cantonese-scrabble",
+  "description": "An offline, two-player Cantonese Scrabble (粵拼拼字) board game built with React and Vite.",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -8,7 +9,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "topchars": "node countTopChars.mjs"
+    "topchars": "node scripts/countTopChars.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

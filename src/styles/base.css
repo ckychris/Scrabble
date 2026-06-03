@@ -1,0 +1,100 @@
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+body {
+  background-color: var(--canvas);
+  background-image:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(28, 42, 57, 0.05) 0 1px,
+      transparent 1.5px
+    ),
+    radial-gradient(
+      circle at 82% 30%,
+      rgba(11, 122, 75, 0.08) 0 1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 48% 72%,
+      rgba(232, 157, 139, 0.08) 0 1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 28% 84%,
+      rgba(235, 196, 148, 0.08) 0 1px,
+      transparent 1.6px
+    ),
+    linear-gradient(180deg, #ede9e1 0%, #eae7df 42%, #e6e0d6 100%);
+  background-size:
+    180px 180px,
+    220px 220px,
+    240px 240px,
+    260px 260px,
+    100% 100%;
+  background-attachment: fixed;
+  background-position: center;
+  font-family: var(--font-display);
+  color: var(--text-main);
+  min-height: 100vh;
+  overflow-x: hidden;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Terrazzo tabletop texture */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body::before {
+  background-image:
+    radial-gradient(
+      circle at 15% 12%,
+      rgba(255, 255, 255, 0.36) 0 2px,
+      transparent 2.8px
+    ),
+    radial-gradient(
+      circle at 36% 24%,
+      rgba(28, 42, 57, 0.06) 0 1.5px,
+      transparent 2.4px
+    ),
+    radial-gradient(
+      circle at 72% 18%,
+      rgba(11, 122, 75, 0.08) 0 1.8px,
+      transparent 2.6px
+    ),
+    radial-gradient(
+      circle at 84% 62%,
+      rgba(211, 78, 54, 0.08) 0 1.8px,
+      transparent 2.6px
+    ),
+    radial-gradient(
+      circle at 22% 78%,
+      rgba(28, 42, 57, 0.05) 0 1.4px,
+      transparent 2.2px
+    );
+  background-size: 160px 160px;
+  opacity: 0.55;
+}
+
+body::after {
+  background: radial-gradient(
+    circle at top,
+    rgba(255, 255, 255, 0.24),
+    transparent 48%
+  );
+  opacity: 0.7;
+}
+

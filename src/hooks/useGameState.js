@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import sourceDictData from "../data/sourceDictionary.json";
-import sound from "../components/SoundSynth";
-import { getBoardMultiplier } from "../components/Board";
+import sound from "../services/soundSynth";
 import {
   BOARD_SIZE,
   DEFAULT_WORD_INFO_MAP,
@@ -10,7 +9,10 @@ import {
   createEmptyBoard,
   createTileBag,
   validateTurnSubmission,
-} from "../utils/gameLogic";
+} from "../game";
+import { shuffleInPlace } from "../utils/shuffle";
+import { useGameAlert } from "./useGameAlert";
+import { useTileDefinition } from "./useTileDefinition";
 
 export function useGameState() {
   const [tileBag, setTileBag] = useState([]);
@@ -22,7 +24,6 @@ export function useGameState() {
   const scoresRef = useRef({ 1: 0, 2: 0 });
   const racksRef = useRef({ 1: [], 2: [] });
   const gameSessionRef = useRef(0);
-  const alertTimeoutRef = useRef(null);
 
   const [selectedTileId, setSelectedTileId] = useState(null);
   const [placementsThisTurn, setPlacementsThisTurn] = useState([]);
@@ -32,7 +33,6 @@ export function useGameState() {
   const [activeDragId, setActiveDragId] = useState(null);
   const [isExchangeMode, setIsExchangeMode] = useState(false);
   const [exchangeSelected, setExchangeSelected] = useState(new Set());
-  const [alertMessage, setAlertMessage] = useState(null);
   const [wordModal, setWordModal] = useState({
     isOpen: false,
     word: "",
@@ -47,21 +47,19 @@ export function useGameState() {
   const [endScores, setEndScores] = useState(null);
   const [consecutivePasses, setConsecutivePasses] = useState(0);
   const [hasGameStarted, setHasGameStarted] = useState(false);
-  const [tileDefinition, setTileDefinition] = useState({
-    isOpen: false,
-    word: "",
-    jyutping: "",
-    eng: "",
-  });
-  const hoverTimerRef = useRef(null);
 
-  useEffect(() => {
-    window.__CANTONESE_SCRABBLE__ = {
-      scores,
-      endScores,
-      gameWinner,
-    };
-  }, [scores, endScores, gameWinner]);
+  const validationWordSet = DEFAULT_WORD_SET;
+  const validationWordInfoMap = DEFAULT_WORD_INFO_MAP;
+
+  const { alertMessage, triggerAlert } = useGameAlert(soundEnabled);
+  const {
+    tileDefinition,
+    hideTileDefinition,
+    handleTileHoverStart,
+    handleTileHoverEnd,
+    handleWordHoverStart,
+    handleWordHoverEnd,
+  } = useTileDefinition(validationWordInfoMap);
 
   useEffect(() => {
     scoresRef.current = scores;
@@ -70,20 +68,6 @@ export function useGameState() {
   useEffect(() => {
     racksRef.current = racks;
   }, [racks]);
-
-  useEffect(
-    () => () => {
-      if (hoverTimerRef.current) {
-        clearTimeout(hoverTimerRef.current);
-        hoverTimerRef.current = null;
-      }
-      if (alertTimeoutRef.current) {
-        clearTimeout(alertTimeoutRef.current);
-        alertTimeoutRef.current = null;
-      }
-    },
-    [],
-  );
 
   useEffect(() => {
     if (hasGameStarted) return;
@@ -122,94 +106,6 @@ export function useGameState() {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [hasGameStarted]);
-
-  const validationWordSet = DEFAULT_WORD_SET;
-  const validationWordInfoMap = DEFAULT_WORD_INFO_MAP;
-
-  const triggerAlert = (msg) => {
-    if (alertTimeoutRef.current) {
-      clearTimeout(alertTimeoutRef.current);
-    }
-    setAlertMessage(null);
-
-    const tid = setTimeout(() => {
-      setAlertMessage(msg);
-      if (soundEnabled) sound.playIncorrect();
-
-      alertTimeoutRef.current = setTimeout(() => {
-        setAlertMessage(null);
-      }, 3000);
-    }, 20);
-    alertTimeoutRef.current = tid;
-  };
-
-  const clearTileHoverTimer = () => {
-    if (hoverTimerRef.current) {
-      clearTimeout(hoverTimerRef.current);
-      hoverTimerRef.current = null;
-    }
-  };
-
-  const hideTileDefinition = () => {
-    clearTileHoverTimer();
-    setTileDefinition((prev) => ({
-      ...prev,
-      isOpen: false,
-    }));
-  };
-
-  const handleTileHoverStart = (tile) => {
-    clearTileHoverTimer();
-
-    const char = tile?.char || "";
-    if (char.length !== 1) {
-      hideTileDefinition();
-      return;
-    }
-
-    const info = validationWordInfoMap.get(char);
-    if (!info) {
-      hideTileDefinition();
-      return;
-    }
-
-    hoverTimerRef.current = setTimeout(() => {
-      setTileDefinition({
-        isOpen: true,
-        word: char,
-        jyutping: info.jyutping || tile?.jyutping || "",
-        eng: info.eng || "",
-      });
-    }, 700);
-  };
-
-  const handleTileHoverEnd = () => {
-    hideTileDefinition();
-  };
-
-  const handleWordHoverStart = (wordEntry) => {
-    clearTileHoverTimer();
-
-    const word = wordEntry?.word || "";
-    if (!word) {
-      hideTileDefinition();
-      return;
-    }
-
-    const info = validationWordInfoMap.get(word);
-    hoverTimerRef.current = setTimeout(() => {
-      setTileDefinition({
-        isOpen: true,
-        word,
-        jyutping: wordEntry?.jyutping || info?.jyutping || "",
-        eng: wordEntry?.eng || info?.eng || "",
-      });
-    }, 700);
-  };
-
-  const handleWordHoverEnd = () => {
-    hideTileDefinition();
-  };
 
   useEffect(() => {
     const bag = createTileBag(sourceDictData, `g${gameSessionRef.current}-`);
@@ -461,28 +357,18 @@ export function useGameState() {
   };
 
   const handleSubmit = () => {
-    console.groupCollapsed("[handleSubmit] start");
-    console.log("currentPlayer:", currentPlayer);
-    console.log("placementsThisTurn:", placementsThisTurn);
-    console.log("board snapshot:", board);
-
     const submission = validateTurnSubmission({
       board,
       placements: placementsThisTurn,
       boardSize: BOARD_SIZE,
       wordSet: validationWordSet,
       wordInfoMap: validationWordInfoMap,
-      getBoardMultiplier,
     });
 
     if (!submission.ok) {
-      console.warn("[handleSubmit] validation failed:", submission.error);
-      console.groupEnd();
       triggerAlert(submission.error);
       return;
     }
-
-    console.log("[handleSubmit] validation passed:", submission);
 
     setBoard((prev) => {
       const next = prev.map((r) => [...r]);
@@ -561,7 +447,6 @@ export function useGameState() {
     setPlacementsThisTurn([]);
     setConsecutivePasses(0);
     setSelectedTileId(null);
-    console.groupEnd();
   };
 
   const handleStartExchange = () => {
@@ -596,10 +481,7 @@ export function useGameState() {
     const discarded = racks[currentPlayer].filter((t) => selectedIds.has(t.id));
     newBag.push(...discarded);
 
-    for (let i = newBag.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [newBag[i], newBag[j]] = [newBag[j], newBag[i]];
-    }
+    shuffleInPlace(newBag);
 
     const newRack = [
       ...racks[currentPlayer].filter((t) => !selectedIds.has(t.id)),

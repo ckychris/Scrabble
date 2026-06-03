@@ -1,0 +1,196 @@
+/* RIGHT PANEL (SCOREBOARD, PLAY LOG, SETTINGS) */
+.right-game-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.right-game-panel .score-card-panel {
+  padding: 14px 15px;
+}
+
+.right-game-panel .score-card-panel h3 {
+  font-size: 0.98rem;
+  margin-bottom: 8px;
+}
+
+.match-status-panel {
+  background: linear-gradient(
+    180deg,
+    rgba(247, 245, 240, 0.98),
+    rgba(247, 245, 240, 0.88)
+  );
+}
+
+.match-status-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.match-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(28, 42, 57, 0.08);
+}
+
+.match-status-row span {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-family: var(--font-display);
+}
+
+.match-status-row strong {
+  color: var(--text-main);
+  font-size: 0.98rem;
+  font-family: var(--font-display);
+}
+
+.score-card-panel {
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 12px 30px var(--panel-shadow);
+}
+
+.score-card-panel h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text-main);
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 6px;
+  font-family: var(--font-cjk);
+}
+
+.player-scores-flex {
+  display: flex;
+  gap: 12px;
+}
+
+.score-box {
+  flex: 1;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(247, 245, 240, 0.72);
+  border: 1px solid var(--panel-border);
+  text-align: center;
+  position: relative;
+  transition: var(--transition);
+}
+
+.score-box.active-turn {
+  background: rgba(11, 122, 75, 0.08);
+  border-color: rgba(11, 122, 75, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(11, 122, 75, 0.12),
+    0 10px 18px rgba(28, 42, 57, 0.08);
+}
+
+.score-box .player-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-family: var(--font-display);
+}
+
+.score-box.active-turn .player-title {
+  color: var(--action-primary);
+}
+
+.score-box .player-points {
+  font-size: 2.2rem;
+  font-weight: 900;
+  color: var(--text-main);
+  margin: 4px 0;
+  font-family: var(--font-display);
+}
+
+.score-box .rack-count-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.bag-tile-stats {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+/* Play Logs */
+.logs-scroller {
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 6px;
+}
+
+.empty-logs {
+  text-align: center;
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  padding: 10px 0;
+}
+
+.log-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(247, 245, 240, 0.88);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  border: 1px solid rgba(28, 42, 57, 0.12);
+}
+
+.log-player {
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.log-player.p-1 {
+  background: var(--action-primary);
+  color: var(--tile-base);
+}
+
+.log-player.p-2 {
+  background: var(--alert);
+  color: var(--tile-base);
+}
+
+.log-words {
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.log-word-item {
+  cursor: help;
+  text-decoration: underline dotted rgba(31, 26, 18, 0.5);
+  text-underline-offset: 2px;
+}
+
+.log-word-item:hover {
+  color: var(--action-primary);
+  text-decoration-color: rgba(11, 122, 75, 0.9);
+}
+
+.log-score {
+  color: var(--action-primary);
+  font-weight: 700;
+}
+

@@ -1,5 +1,6 @@
 import React from "react";
 import { useDroppable } from "@dnd-kit/core";
+import { RACK_SIZE } from "../config/constants";
 
 export function Rack({
   tiles,
@@ -16,7 +17,7 @@ export function Rack({
     },
   });
 
-  const rackCapacity = 30;
+  const rackCapacity = RACK_SIZE;
 
   return (
     <div className="rack-outer-container">
