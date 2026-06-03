@@ -27,7 +27,6 @@ export function useGameState() {
 
   const [selectedTileId, setSelectedTileId] = useState(null);
   const [placementsThisTurn, setPlacementsThisTurn] = useState([]);
-  const [isRackHidden, setIsRackHidden] = useState(false);
   const [showInterstitial, setShowInterstitial] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [activeDragId, setActiveDragId] = useState(null);
@@ -311,7 +310,6 @@ export function useGameState() {
   };
 
   const transitionTurn = () => {
-    setIsRackHidden(true);
     setShowInterstitial(true);
   };
 
@@ -319,7 +317,6 @@ export function useGameState() {
     if (soundEnabled) sound.playTick();
     setCurrentPlayer((prev) => (prev === 1 ? 2 : 1));
     setShowInterstitial(false);
-    setIsRackHidden(false);
   };
 
   const endGame = () => {
@@ -529,7 +526,6 @@ export function useGameState() {
     scores,
     racks,
     selectedTileId,
-    isRackHidden,
     showInterstitial,
     soundEnabled,
     activeDragId,
@@ -544,7 +540,6 @@ export function useGameState() {
 
     // actions
     setSoundEnabled,
-    setIsRackHidden,
     setWordModal,
     handleDragStart,
     handleDragEnd,

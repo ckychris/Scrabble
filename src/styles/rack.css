@@ -1,9 +1,20 @@
 /* RACK PANELS */
 .rack-outer-container {
-  width: min(100%, calc(100vw - 20px));
-  max-width: calc(100vw - 20px);
+  width: 100%;
+  max-width: min(480px, calc(100vw - 20px));
   margin-top: 14px;
   position: relative;
+}
+
+/* Two-column layout (right panel visible): let the rack grow to its
+   natural width, anchored to the left column and overflowing right
+   without expanding the grid column. */
+@media (min-width: 1025px) {
+  .rack-outer-container {
+    width: max-content;
+    max-width: none;
+    align-self: flex-start;
+  }
 }
 
 .rack-header {
@@ -168,24 +179,3 @@
     grid-auto-rows: 46px;
   }
 }
-
-.rack-tile-face-down {
-  width: 90%;
-  height: 90%;
-  background: linear-gradient(135deg, #1f1a30, #130f1e);
-  border-radius: 6px;
-  border: 1.5px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.4);
-  position: relative;
-}
-
-.rack-tile-face-down::after {
-  content: "★";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.1);
-}
-

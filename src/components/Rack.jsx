@@ -2,14 +2,7 @@ import React from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { RACK_SIZE } from "../config/constants";
 
-export function Rack({
-  tiles,
-  selectedTileId,
-  onTileClick,
-  renderTile,
-  isHidden,
-  onToggleHide,
-}) {
+export function Rack({ tiles, selectedTileId, onTileClick, renderTile }) {
   const { setNodeRef, isOver } = useDroppable({
     id: "rack-droppable",
     data: {
@@ -25,30 +18,14 @@ export function Rack({
         <div className="rack-header-left">
           <span className="rack-title">Tile Rack • 備用字脾</span>
         </div>
-        <button
-          className="btn-text btn-toggle-rack"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleHide();
-          }}
-        >
-          {isHidden ? "👁️ Show Racks" : "🔒 Hide Racks"}
-        </button>
       </div>
 
       <div className={`rack-frame ${isOver ? "drag-over" : ""}`}>
-        <div
-          ref={setNodeRef}
-          className={`rack-slots-wrapper ${isHidden ? "hidden-state" : ""}`}
-        >
+        <div ref={setNodeRef} className="rack-slots-wrapper">
           <div className="rack-slots">
             {tiles.map((tile) => (
               <div key={tile.id} className="rack-slot-box">
-                {!isHidden ? (
-                  renderTile(tile, true, selectedTileId === tile.id)
-                ) : (
-                  <div className="rack-tile-face-down"></div>
-                )}
+                {renderTile(tile, true, selectedTileId === tile.id)}
               </div>
             ))}
 

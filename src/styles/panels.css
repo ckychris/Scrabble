@@ -60,6 +60,12 @@
   box-shadow: 0 12px 30px var(--panel-shadow);
 }
 
+.log-history-panel {
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
 .score-card-panel h3 {
   font-size: 1rem;
   font-weight: 700;
@@ -129,7 +135,8 @@
 
 /* Play Logs */
 .logs-scroller {
-  max-height: 180px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -193,4 +200,3 @@
   color: var(--action-primary);
   font-weight: 700;
 }
-

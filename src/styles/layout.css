@@ -110,6 +110,12 @@
   .game-wrapper-grid {
     grid-template-columns: 1fr;
   }
+
+  .right-game-panel {
+    width: 100%;
+    max-width: 480px;
+    margin-inline: auto;
+  }
 }
 
 /* Game Main Header */

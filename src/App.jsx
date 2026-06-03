@@ -11,7 +11,6 @@ import { Board } from "./components/Board";
 import { Rack } from "./components/Rack";
 import { Tile } from "./components/Tile";
 import { MatchStatusStrip } from "./components/panels/MatchStatusStrip";
-import { MatchStatusPanel } from "./components/panels/MatchStatusPanel";
 import { PlayLogPanel } from "./components/panels/PlayLogPanel";
 import { ActionBar } from "./components/panels/ActionBar";
 import { TurnInterstitial } from "./components/modals/TurnInterstitial";
@@ -33,7 +32,6 @@ function App() {
     scores,
     racks,
     selectedTileId,
-    isRackHidden,
     showInterstitial,
     soundEnabled,
     activeDragId,
@@ -46,7 +44,6 @@ function App() {
     gameWinner,
     endScores,
     setSoundEnabled,
-    setIsRackHidden,
     setWordModal,
     handleDragStart,
     handleDragEnd,
@@ -143,8 +140,6 @@ function App() {
               tiles={racks[currentPlayer]}
               selectedTileId={selectedTileId}
               renderTile={renderTile}
-              isHidden={isRackHidden}
-              onToggleHide={() => setIsRackHidden(!isRackHidden)}
             />
 
             <ActionBar
@@ -174,12 +169,6 @@ function App() {
                 {soundEnabled ? "🔊 Sound: On" : "🔇 Sound: Off"}
               </button>
             </header>
-
-            <MatchStatusPanel
-              currentPlayer={currentPlayer}
-              bagCount={tileBag.length}
-              isExchangeMode={isExchangeMode}
-            />
 
             <PlayLogPanel
               history={history}
