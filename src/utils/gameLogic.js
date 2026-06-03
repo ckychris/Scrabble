@@ -145,30 +145,6 @@ export function createTileBag(dictionary, idPrefix = "") {
   return bag;
 }
 
-export function buildWordSet(dictionary) {
-  const entries = normalizeDictionaryEntries(dictionary);
-  return new Set(entries.map((entry) => getEntryWord(entry)).filter(Boolean));
-}
-
-export function buildWordInfoMap(dictionary) {
-  const entries = normalizeDictionaryEntries(dictionary);
-  return new Map(
-    entries
-      .map((entry) => {
-        const word = getEntryWord(entry);
-        if (!word) return null;
-        return [
-          word,
-          {
-            jyutping: getEntryJyutping(entry),
-            eng: getEntryEnglish(entry),
-          },
-        ];
-      })
-      .filter(Boolean),
-  );
-}
-
 export function validateTurnSubmission({
   board,
   placements,
@@ -399,71 +375,95 @@ export function validateTurnSubmission({
   }
 
   const validatedWords = [];
+  const bestByDirection = {
+    left: null,
+    right: null,
+    up: null,
+    down: null,
+  };
   const invalidWords = [];
   for (const formed of formedWords) {
-    // Direction-aware beginner mode:
-    // - If the new tile is on the left/top edge of the chain, trim from right/bottom.
-    // - If the new tile is on the right/bottom edge, trim from left/top.
-    // - Never validate a candidate that contains zero newly placed tiles.
+    // Build candidates so newly placed tiles are always at one candidate edge.
     const suffixCandidates = [];
     const chainLen = formed.coords.length;
-    const hasNewAtStart = Boolean(formed.coords[0]?.tile?.isNew);
-    const hasNewAtEnd = Boolean(formed.coords[chainLen - 1]?.tile?.isNew);
-    const trimFromStart = !hasNewAtStart || hasNewAtEnd;
+    const newIndexes = formed.coords
+      .map((coord, index) => (coord.tile?.isNew ? index : -1))
+      .filter((index) => index >= 0);
 
-    if (trimFromStart) {
-      for (let start = 0; start <= chainLen - 2; start += 1) {
-        const candidateCoords = formed.coords.slice(start);
-        if (candidateCoords.length < 2) continue;
-        if (!isFirstTurn && candidateCoords.length <= placements.length)
-          continue;
-        if (!candidateCoords.some((coord) => coord.tile?.isNew)) continue;
-
-        const candidateWord = candidateCoords
-          .map((coord) => coord.tile.char)
-          .join("");
-        const candidateJyutping = candidateCoords
-          .map((coord) => coord.tile.jyutping || "")
-          .join(" ")
-          .trim();
-
-        suffixCandidates.push({
-          ...formed,
-          word: candidateWord,
-          jyutping: candidateJyutping,
-          coords: candidateCoords,
-          trimSide: "start",
-          offset: start,
-        });
-      }
-    } else {
-      for (let end = chainLen; end >= 2; end -= 1) {
-        const candidateCoords = formed.coords.slice(0, end);
-        if (candidateCoords.length < 2) continue;
-        if (!isFirstTurn && candidateCoords.length <= placements.length)
-          continue;
-        if (!candidateCoords.some((coord) => coord.tile?.isNew)) continue;
-
-        const candidateWord = candidateCoords
-          .map((coord) => coord.tile.char)
-          .join("");
-        const candidateJyutping = candidateCoords
-          .map((coord) => coord.tile.jyutping || "")
-          .join(" ")
-          .trim();
-
-        suffixCandidates.push({
-          ...formed,
-          word: candidateWord,
-          jyutping: candidateJyutping,
-          coords: candidateCoords,
-          trimSide: "end",
-          offset: chainLen - end,
-        });
-      }
+    if (newIndexes.length === 0) {
+      invalidWords.push({
+        ...formed,
+        boardWord: formed.word,
+        word: formed.word,
+        jyutping: formed.jyutping || "",
+        eng: "",
+        matchedBySound: false,
+      });
+      continue;
     }
 
-    let matched = null;
+    const minNewIndex = Math.min(...newIndexes);
+    const maxNewIndex = Math.max(...newIndexes);
+    const seenCandidateRanges = new Set();
+
+    for (let start = 0; start <= minNewIndex; start += 1) {
+      const end = maxNewIndex;
+      const candidateLen = end - start + 1;
+      if (candidateLen < 2) continue;
+      if (!isFirstTurn && candidateLen <= placements.length) continue;
+
+      const rangeKey = `${start}-${end}`;
+      if (seenCandidateRanges.has(rangeKey)) continue;
+      seenCandidateRanges.add(rangeKey);
+
+      const candidateCoords = formed.coords.slice(start, end + 1);
+      const candidateWord = candidateCoords
+        .map((coord) => coord.tile.char)
+        .join("");
+      const candidateJyutping = candidateCoords
+        .map((coord) => coord.tile.jyutping || "")
+        .join(" ")
+        .trim();
+
+      suffixCandidates.push({
+        ...formed,
+        word: candidateWord,
+        jyutping: candidateJyutping,
+        coords: candidateCoords,
+        trimSide: "new-at-end",
+        offset: start,
+      });
+    }
+
+    for (let end = maxNewIndex; end < chainLen; end += 1) {
+      const start = minNewIndex;
+      const candidateLen = end - start + 1;
+      if (candidateLen < 2) continue;
+      if (!isFirstTurn && candidateLen <= placements.length) continue;
+
+      const rangeKey = `${start}-${end}`;
+      if (seenCandidateRanges.has(rangeKey)) continue;
+      seenCandidateRanges.add(rangeKey);
+
+      const candidateCoords = formed.coords.slice(start, end + 1);
+      const candidateWord = candidateCoords
+        .map((coord) => coord.tile.char)
+        .join("");
+      const candidateJyutping = candidateCoords
+        .map((coord) => coord.tile.jyutping || "")
+        .join(" ")
+        .trim();
+
+      suffixCandidates.push({
+        ...formed,
+        word: candidateWord,
+        jyutping: candidateJyutping,
+        coords: candidateCoords,
+        trimSide: "new-at-start",
+        offset: chainLen - 1 - end,
+      });
+    }
+
     for (const candidate of suffixCandidates) {
       const exactInfo = wordInfoMap.get(candidate.word) || null;
       const soundLikeMatch = wordSet.has(candidate.word)
@@ -498,7 +498,7 @@ export function validateTurnSubmission({
         matchedBySound: false,
       };
 
-      matched = {
+      const resolvedCandidate = {
         ...candidate,
         boardWord: formed.word,
         word: resolvedWord.word,
@@ -506,23 +506,31 @@ export function validateTurnSubmission({
         eng: resolvedWord.eng || "",
         matchedBySound: Boolean(resolvedWord.matchedBySound),
       };
-      break;
-    }
 
-    if (!matched) {
-      invalidWords.push({
-        ...formed,
-        boardWord: formed.word,
-        word: formed.word,
-        jyutping: formed.jyutping || "",
-        eng: "",
-        matchedBySound: false,
-      });
-      continue;
-    }
+      const isHorizontalWord = candidate.key?.startsWith("h-");
+      const directionBucket = isHorizontalWord
+        ? candidate.trimSide === "new-at-end"
+          ? "left"
+          : "right"
+        : candidate.trimSide === "new-at-end"
+          ? "up"
+          : "down";
 
-    validatedWords.push(matched);
+      const currentBest = bestByDirection[directionBucket];
+      if (
+        !currentBest ||
+        resolvedCandidate.coords.length > currentBest.coords.length
+      ) {
+        bestByDirection[directionBucket] = resolvedCandidate;
+      }
+    }
   }
+
+  ["left", "right", "up", "down"].forEach((direction) => {
+    if (bestByDirection[direction]) {
+      validatedWords.push(bestByDirection[direction]);
+    }
+  });
 
   if (validatedWords.length === 0) {
     console.warn("Rejected: all formed words are invalid", invalidWords);

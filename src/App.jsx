@@ -51,8 +51,8 @@ function App() {
     handleSubmit,
     handleStartExchange,
     handleConfirmExchange,
+    handleExchangeAll,
     handleCancelExchange,
-    handleDictionaryUpload,
     handleTileHoverStart,
     handleTileHoverEnd,
     handleWordHoverStart,
@@ -114,16 +114,41 @@ function App() {
       onDragEnd={handleDragEnd}
     >
       <div className="scrabble-app-container">
-        <div className="glow-blob glow-left"></div>
-        <div className="glow-blob glow-right"></div>
+        <div className="match-status-strip">
+          <div
+            className={`match-player-card match-player-left ${currentPlayer === 1 ? "active-turn" : ""}`}
+          >
+            <span className="match-player-label">Player 1</span>
+            <strong className="match-player-score">{scores[1]}</strong>
+          </div>
+
+          <div className="match-center-card">
+            <span className="match-center-label">Turn</span>
+            <strong className="match-center-value">P{currentPlayer}</strong>
+          </div>
+
+          <div
+            className={`match-player-card match-player-right ${currentPlayer === 2 ? "active-turn" : ""}`}
+          >
+            <span className="match-player-label">Player 2</span>
+            <strong className="match-player-score">{scores[2]}</strong>
+          </div>
+        </div>
 
         <div className="game-wrapper-grid">
           <div className="left-game-panel">
-            <Board
-              boardState={board}
-              onSquareClick={handleSquareClick}
-              renderTile={renderTile}
-            />
+            <div className="board-position-wrapper">
+              <Board
+                boardState={board}
+                onSquareClick={handleSquareClick}
+                renderTile={renderTile}
+              />
+              {alertMessage && (
+                <div className="board-alert-notification animate-alert-ease-up">
+                  <span className="text-shake">⚠️ {alertMessage}</span>
+                </div>
+              )}
+            </div>
 
             <Rack
               tiles={racks[currentPlayer]}
@@ -131,7 +156,6 @@ function App() {
               renderTile={renderTile}
               isHidden={isRackHidden}
               onToggleHide={() => setIsRackHidden(!isRackHidden)}
-              alertMessage={alertMessage}
             />
 
             {isExchangeMode ? (
@@ -146,6 +170,12 @@ function App() {
                     onClick={handleCancelExchange}
                   >
                     ✕ Cancel • 取消
+                  </button>
+                  <button
+                    className="btn-game btn-exchange"
+                    onClick={handleExchangeAll}
+                  >
+                    🔄 Exchange All • 全部換牌
                   </button>
                   <button
                     className="btn-game btn-submit-game"
@@ -194,37 +224,21 @@ function App() {
               </button>
             </header>
 
-            <div className="score-card-panel">
-              <h3>Scoreboard • 計分板</h3>
-              <div className="player-scores-flex">
-                <div
-                  className={`score-box player-1 ${currentPlayer === 1 ? "active-turn" : ""}`}
-                >
-                  <span className="player-title">
-                    Player 1 {currentPlayer === 1 ? "⚡" : ""}
-                  </span>
-                  <div className="player-points">{scores[1]}</div>
-                  <span className="rack-count-sub">
-                    {racks[1].length} tiles left
-                  </span>
+            <div className="score-card-panel match-status-panel">
+              <h3>Match Status • 比賽狀態</h3>
+              <div className="match-status-grid">
+                <div className="match-status-row">
+                  <span>Active player</span>
+                  <strong>Player {currentPlayer}</strong>
                 </div>
-                <div
-                  className={`score-box player-2 ${currentPlayer === 2 ? "active-turn" : ""}`}
-                >
-                  <span className="player-title">
-                    Player 2 {currentPlayer === 2 ? "⚡" : ""}
-                  </span>
-                  <div className="player-points">{scores[2]}</div>
-                  <span className="rack-count-sub">
-                    {racks[2].length} tiles left
-                  </span>
+                <div className="match-status-row">
+                  <span>Remaining bag</span>
+                  <strong>{tileBag.length}</strong>
                 </div>
-              </div>
-
-              <div className="bag-tile-stats">
-                <span>
-                  🎒 Remaining Bag Tiles: <strong>{tileBag.length}</strong>
-                </span>
+                <div className="match-status-row">
+                  <span>Mode</span>
+                  <strong>{isExchangeMode ? "Exchange" : "Play"}</strong>
+                </div>
               </div>
             </div>
 
@@ -263,29 +277,6 @@ function App() {
                 )}
               </div>
             </div>
-
-            <div className="score-card-panel settings-panel-box">
-              <h3>Game Options • 設定</h3>
-
-              <div className="custom-file-upload">
-                <label className="file-label">
-                  📁 Load Custom Dictionary JSON (This doesn't work =])
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleDictionaryUpload}
-                  />
-                </label>
-                <p className="file-help">
-                  Upload a custom dictionary JSON in the words-hk inspired
-                  schema format.
-                </p>
-              </div>
-
-              <button className="btn-game btn-restart" onClick={reloadGame}>
-                ⚠️ Reset Game • 重開新局
-              </button>
-            </div>
           </div>
         </div>
 
@@ -316,7 +307,7 @@ function App() {
 
         {wordModal.isOpen && (
           <div className="celebration-modal-overlay">
-            <div className="celebration-card animate-zoom">
+            <div className="celebration-card scored-modal animate-zoom">
               {wordModal.isBingo && (
                 <div className="bingo-badge">🔥 BINGO (+50)</div>
               )}

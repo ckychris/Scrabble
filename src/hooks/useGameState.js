@@ -7,8 +7,6 @@ import {
   DEFAULT_WORD_INFO_MAP,
   DEFAULT_WORD_SET,
   RACK_SIZE,
-  buildWordInfoMap,
-  buildWordSet,
   createEmptyBoard,
   createTileBag,
   validateTurnSubmission,
@@ -20,11 +18,11 @@ export function useGameState() {
   const [currentPlayer, setCurrentPlayer] = useState(1);
   const [scores, setScores] = useState({ 1: 0, 2: 0 });
   const [racks, setRacks] = useState({ 1: [], 2: [] });
-  const [customDictionary, setCustomDictionary] = useState(null);
 
   const scoresRef = useRef({ 1: 0, 2: 0 });
   const racksRef = useRef({ 1: [], 2: [] });
   const gameSessionRef = useRef(0);
+  const alertTimeoutRef = useRef(null);
 
   const [selectedTileId, setSelectedTileId] = useState(null);
   const [placementsThisTurn, setPlacementsThisTurn] = useState([]);
@@ -48,6 +46,7 @@ export function useGameState() {
   const [gameWinner, setGameWinner] = useState(null);
   const [endScores, setEndScores] = useState(null);
   const [consecutivePasses, setConsecutivePasses] = useState(0);
+  const [hasGameStarted, setHasGameStarted] = useState(false);
   const [tileDefinition, setTileDefinition] = useState({
     isOpen: false,
     word: "",
@@ -78,28 +77,70 @@ export function useGameState() {
         clearTimeout(hoverTimerRef.current);
         hoverTimerRef.current = null;
       }
+      if (alertTimeoutRef.current) {
+        clearTimeout(alertTimeoutRef.current);
+        alertTimeoutRef.current = null;
+      }
     },
     [],
   );
 
-  const validationWordSet = useMemo(
-    () =>
-      customDictionary ? buildWordSet(customDictionary) : DEFAULT_WORD_SET,
-    [customDictionary],
-  );
+  useEffect(() => {
+    if (hasGameStarted) return;
 
-  const validationWordInfoMap = useMemo(
-    () =>
-      customDictionary
-        ? buildWordInfoMap(customDictionary)
-        : DEFAULT_WORD_INFO_MAP,
-    [customDictionary],
-  );
+    const startedByInteraction =
+      placementsThisTurn.length > 0 ||
+      history.length > 0 ||
+      scores[1] > 0 ||
+      scores[2] > 0 ||
+      consecutivePasses > 0 ||
+      isExchangeMode;
+
+    if (startedByInteraction) {
+      setHasGameStarted(true);
+    }
+  }, [
+    hasGameStarted,
+    placementsThisTurn.length,
+    history.length,
+    scores,
+    consecutivePasses,
+    isExchangeMode,
+  ]);
+
+  useEffect(() => {
+    if (!hasGameStarted) return;
+
+    const handleBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = "";
+      return "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasGameStarted]);
+
+  const validationWordSet = DEFAULT_WORD_SET;
+  const validationWordInfoMap = DEFAULT_WORD_INFO_MAP;
 
   const triggerAlert = (msg) => {
-    setAlertMessage(msg);
-    if (soundEnabled) sound.playIncorrect();
-    setTimeout(() => setAlertMessage(null), 3000);
+    if (alertTimeoutRef.current) {
+      clearTimeout(alertTimeoutRef.current);
+    }
+    setAlertMessage(null);
+
+    const tid = setTimeout(() => {
+      setAlertMessage(msg);
+      if (soundEnabled) sound.playIncorrect();
+
+      alertTimeoutRef.current = setTimeout(() => {
+        setAlertMessage(null);
+      }, 3000);
+    }, 20);
+    alertTimeoutRef.current = tid;
   };
 
   const clearTileHoverTimer = () => {
@@ -540,21 +581,19 @@ export function useGameState() {
     });
   };
 
-  const handleConfirmExchange = () => {
-    if (exchangeSelected.size === 0) {
+  const executeExchange = (selectedIds) => {
+    if (selectedIds.size === 0) {
       triggerAlert("Select at least one tile to exchange! 請選擇字牌");
       return;
     }
-    if (exchangeSelected.size > tileBag.length) {
+    if (selectedIds.size > tileBag.length) {
       triggerAlert("Not enough tiles in the bag! 字袋字牌不足");
       return;
     }
 
     const newBag = [...tileBag];
-    const drawn = newBag.splice(0, exchangeSelected.size);
-    const discarded = racks[currentPlayer].filter((t) =>
-      exchangeSelected.has(t.id),
-    );
+    const drawn = newBag.splice(0, selectedIds.size);
+    const discarded = racks[currentPlayer].filter((t) => selectedIds.has(t.id));
     newBag.push(...discarded);
 
     for (let i = newBag.length - 1; i > 0; i -= 1) {
@@ -563,7 +602,7 @@ export function useGameState() {
     }
 
     const newRack = [
-      ...racks[currentPlayer].filter((t) => !exchangeSelected.has(t.id)),
+      ...racks[currentPlayer].filter((t) => !selectedIds.has(t.id)),
       ...drawn,
     ];
 
@@ -581,40 +620,23 @@ export function useGameState() {
     transitionTurn();
   };
 
+  const handleConfirmExchange = () => {
+    executeExchange(exchangeSelected);
+  };
+
+  const handleExchangeAll = () => {
+    if (placementsThisTurn.length > 0) {
+      triggerAlert("Recall your tiles before exchanging! 請先收回字牌");
+      return;
+    }
+
+    const allRackIds = new Set(racks[currentPlayer].map((t) => t.id));
+    executeExchange(allRackIds);
+  };
+
   const handleCancelExchange = () => {
     setIsExchangeMode(false);
     setExchangeSelected(new Set());
-  };
-
-  const handleDictionaryUpload = (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const data = JSON.parse(e.target.result);
-        const firstEntry = Array.isArray(data) ? data[0] : null;
-        const hasWord =
-          firstEntry && (firstEntry.variant || firstEntry.v || firstEntry.word);
-        const hasPronunciation =
-          firstEntry && (firstEntry.jyutping || firstEntry.j);
-        if (
-          Array.isArray(data) &&
-          data.length > 0 &&
-          hasWord &&
-          hasPronunciation
-        ) {
-          setCustomDictionary(data);
-          triggerAlert(`Loaded custom dictionary! (${data.length} entries)`);
-        } else {
-          triggerAlert("Invalid JSON dictionary format! 格式錯誤");
-        }
-      } catch (err) {
-        triggerAlert("Error parsing file! 無法解析檔案");
-      }
-    };
-    reader.readAsText(file);
   };
 
   return {
@@ -654,8 +676,8 @@ export function useGameState() {
     handleStartExchange,
     handleToggleExchangeTile,
     handleConfirmExchange,
+    handleExchangeAll,
     handleCancelExchange,
-    handleDictionaryUpload,
     handleTileHoverStart,
     handleTileHoverEnd,
     handleWordHoverStart,
